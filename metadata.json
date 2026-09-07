@@ -1,0 +1,6 @@
+{
+  "name": "Mental Health Journal & Mood Analyzer",
+  "description": "A calming, responsive full-stack mental health journal and mood tracking application with sentiment analysis, sleep records, activity insights, and interactive analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

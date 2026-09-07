@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique Firebase Authentication UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User full name or display name" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of user creation" }
+      },
+      "required": ["uid", "email"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "User journal reflection with NLP sentiment analysis",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "date": { "type": "string", "description": "Date of the journal entry YYYY-MM-DD" },
+        "journalText": { "type": "string", "description": "Journal text reflection content" },
+        "mood": { "type": "string", "description": "Selected mood status" },
+        "sleepHours": { "type": "number", "description": "Logged sleep hours" },
+        "sentiment": { "type": "string", "enum": ["Positive", "Neutral", "Negative"], "description": "NLP sentiment category" },
+        "sentimentScore": { "type": "number", "description": "Normalized sentiment score" },
+        "emotionalKeywords": { "type": "array", "description": "Extracted emotional keywords" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["userId", "date", "journalText", "mood", "sentiment", "sentimentScore", "createdAt", "updatedAt"]
+    },
+    "SleepRecord": {
+      "title": "SleepRecord",
+      "description": "User sleep duration record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "date": { "type": "string", "description": "Date of the sleep record" },
+        "sleepHours": { "type": "number", "description": "Sleep hours" },
+        "notes": { "type": "string", "description": "Optional notes on sleep quality" },
+        "createdAt": { "type": "string", "description": "Record creation timestamp" }
+      },
+      "required": ["userId", "date", "sleepHours", "createdAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "User mindful activity and wellness habit record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "date": { "type": "string", "description": "Date of activity" },
+        "activityName": { "type": "string", "description": "Name of activity" },
+        "duration": { "type": "number", "description": "Duration in minutes" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "date", "activityName", "createdAt"]
+    },
+    "Insight": {
+      "title": "Insight",
+      "description": "Data-driven behavioral and wellness insight",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "title": { "type": "string", "description": "Short insight title" },
+        "description": { "type": "string", "description": "Insight detailed explanation" },
+        "type": { "type": "string", "description": "Insight category: correlation, trend, summary, streak" },
+        "score": { "type": "number", "description": "Optional insight magnitude or relevance score" },
+        "date": { "type": "string", "description": "Associated date" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "title", "description", "createdAt"]
+    },
+    "MoodRecord": {
+      "title": "MoodRecord",
+      "description": "Individual mood check-in document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "mood": { "type": "string", "description": "Mood rating" },
+        "date": { "type": "string", "description": "Date of mood record" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "mood", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection indexed by authenticated UID"
+    },
+    "/journalEntries/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "User journal entries with NLP sentiment classifications and scores"
+    },
+    "/sleepRecords/{recordId}": {
+      "schema": "SleepRecord",
+      "description": "Daily sleep tracking logs"
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Wellness habits and physical or mindfulness activity logs"
+    },
+    "/insights/{insightId}": {
+      "schema": "Insight",
+      "description": "Real-time algorithmic behavioral insights derived from user data"
+    },
+    "/moods/{moodId}": {
+      "schema": "MoodRecord",
+      "description": "Periodic mood check-in entries"
+    }
+  }
+}

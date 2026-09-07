@@ -1,0 +1,810 @@
+{
+  "users": [
+    {
+      "id": "demo-user-001",
+      "name": "Alex Morgan",
+      "email": "alex.demo@wellness.com",
+      "password_hash": "$2b$10$MKwu0F.iM18Kv1DWSC2US.O2KXAeUj.Mj4xbu0odla2.E2mytOYj2",
+      "created_at": "2026-08-08T15:43:26.942Z",
+      "updated_at": "2026-09-07T15:43:26.942Z"
+    }
+  ],
+  "journals": [
+    {
+      "id": "entry-seed-1",
+      "user_id": "demo-user-001",
+      "journal_text": "Started the morning with a crisp 30-minute jog through the park. Feeling centered and ready for the week.",
+      "mood": "Happy",
+      "sleep_hours": 7.5,
+      "activities": [
+        "Exercise",
+        "Reading"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.78,
+      "entry_date": "2026-08-25",
+      "created_at": "2026-08-26T09:43:26.942Z",
+      "updated_at": "2026-08-26T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-2",
+      "user_id": "demo-user-001",
+      "journal_text": "Met Sarah and David for coffee after work. We laughed so much and shared our future travel goals. Deeply grateful for good friends.",
+      "mood": "Very Happy",
+      "sleep_hours": 8,
+      "activities": [
+        "Exercise",
+        "Socializing"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.89,
+      "entry_date": "2026-08-26",
+      "created_at": "2026-08-27T09:43:26.942Z",
+      "updated_at": "2026-08-27T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-3",
+      "user_id": "demo-user-001",
+      "journal_text": "Long study session preparing for the software exam. Feeling slightly drained but satisfied that I reviewed the core modules.",
+      "mood": "Neutral",
+      "sleep_hours": 6.5,
+      "activities": [
+        "Studying",
+        "Resting"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Studying"
+      ],
+      "sentiment": "Neutral",
+      "sentiment_score": 0.08,
+      "entry_date": "2026-08-27",
+      "created_at": "2026-08-28T09:43:26.942Z",
+      "updated_at": "2026-08-28T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-4",
+      "user_id": "demo-user-001",
+      "journal_text": "Woke up tired and struggled with focus all afternoon. Felt a bit overwhelmed by the upcoming deadline.",
+      "mood": "Sad",
+      "sleep_hours": 5.5,
+      "activities": [
+        "Resting"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Resting"
+      ],
+      "sentiment": "Negative",
+      "sentiment_score": -0.62,
+      "entry_date": "2026-08-28",
+      "created_at": "2026-08-29T09:43:26.942Z",
+      "updated_at": "2026-08-29T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-5",
+      "user_id": "demo-user-001",
+      "journal_text": "Took an evening walk without headphones. It helped quiet my thoughts after a noisy workday.",
+      "mood": "Neutral",
+      "sleep_hours": 7,
+      "activities": [
+        "Walking",
+        "Reading"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Walking"
+      ],
+      "sentiment": "Neutral",
+      "sentiment_score": 0.22,
+      "entry_date": "2026-08-29",
+      "created_at": "2026-08-30T09:43:26.942Z",
+      "updated_at": "2026-08-30T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-6",
+      "user_id": "demo-user-001",
+      "journal_text": "Painted watercolor sketches for an hour. Creativity always recharges my mental energy.",
+      "mood": "Happy",
+      "sleep_hours": 7.5,
+      "activities": [
+        "Exercise",
+        "Hobbies"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.74,
+      "entry_date": "2026-08-30",
+      "created_at": "2026-08-31T09:43:26.942Z",
+      "updated_at": "2026-08-31T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-7",
+      "user_id": "demo-user-001",
+      "journal_text": "Weekend farmer market visit with family. Picked up fresh peaches and enjoyed the sunshine.",
+      "mood": "Happy",
+      "sleep_hours": 8,
+      "activities": [
+        "Socializing",
+        "Walking"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Socializing"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.81,
+      "entry_date": "2026-08-31",
+      "created_at": "2026-09-01T09:43:26.942Z",
+      "updated_at": "2026-09-01T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-8",
+      "user_id": "demo-user-001",
+      "journal_text": "Organized my weekly goals and cleaned my desk workspace. Moderate productivity, feeling steady.",
+      "mood": "Neutral",
+      "sleep_hours": 7,
+      "activities": [
+        "Studying"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Studying"
+      ],
+      "sentiment": "Neutral",
+      "sentiment_score": 0.15,
+      "entry_date": "2026-09-01",
+      "created_at": "2026-09-02T09:43:26.942Z",
+      "updated_at": "2026-09-02T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-9",
+      "user_id": "demo-user-001",
+      "journal_text": "Stressed by an unexpected project delay. Tried deep breathing exercises before bed to ease the tension.",
+      "mood": "Sad",
+      "sleep_hours": 6,
+      "activities": [
+        "Resting"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Resting"
+      ],
+      "sentiment": "Negative",
+      "sentiment_score": -0.45,
+      "entry_date": "2026-09-02",
+      "created_at": "2026-09-03T09:43:26.942Z",
+      "updated_at": "2026-09-03T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-10",
+      "user_id": "demo-user-001",
+      "journal_text": "Finished a chapter on mindfulness and habit loops. Feeling more patient with myself today.",
+      "mood": "Neutral",
+      "sleep_hours": 7.2,
+      "activities": [
+        "Walking",
+        "Reading"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Walking"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.35,
+      "entry_date": "2026-09-03",
+      "created_at": "2026-09-04T09:43:26.942Z",
+      "updated_at": "2026-09-04T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-11",
+      "user_id": "demo-user-001",
+      "journal_text": "Great 40-minute gym workout followed by a focused coding session. Momentum feels natural today.",
+      "mood": "Happy",
+      "sleep_hours": 7.8,
+      "activities": [
+        "Exercise",
+        "Studying"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.84,
+      "entry_date": "2026-09-04",
+      "created_at": "2026-09-05T09:43:26.942Z",
+      "updated_at": "2026-09-05T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-12",
+      "user_id": "demo-user-001",
+      "journal_text": "Celebrated completing our major milestones! Everyone was in great spirits. Felt deeply energized and thankful.",
+      "mood": "Very Happy",
+      "sleep_hours": 8.2,
+      "activities": [
+        "Exercise",
+        "Socializing",
+        "Hobbies"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.92,
+      "entry_date": "2026-09-05",
+      "created_at": "2026-09-06T09:43:26.942Z",
+      "updated_at": "2026-09-06T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-13",
+      "user_id": "demo-user-001",
+      "journal_text": "A calm Sunday spent reading in the sun. Ready to tackle tomorrow with a clear mind.",
+      "mood": "Happy",
+      "sleep_hours": 7.6,
+      "activities": [
+        "Walking",
+        "Reading"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Walking"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.75,
+      "entry_date": "2026-09-06",
+      "created_at": "2026-09-07T09:43:26.942Z",
+      "updated_at": "2026-09-07T09:43:26.942Z"
+    },
+    {
+      "id": "entry-seed-14",
+      "user_id": "demo-user-001",
+      "journal_text": "Today was productive. I completed my assignment and spent some quality time with my friends. Sleep was deep and refreshing.",
+      "mood": "Very Happy",
+      "sleep_hours": 8,
+      "activities": [
+        "Exercise",
+        "Studying",
+        "Socializing"
+      ],
+      "tags": [
+        "DailyReflection",
+        "Exercise"
+      ],
+      "sentiment": "Positive",
+      "sentiment_score": 0.88,
+      "entry_date": "2026-09-07",
+      "created_at": "2026-09-08T09:43:26.942Z",
+      "updated_at": "2026-09-08T09:43:26.942Z"
+    }
+  ],
+  "sleep_records": [
+    {
+      "id": "sleep-seed-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-1",
+      "sleep_hours": 7.5,
+      "sleep_date": "2026-08-25",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-08-25T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-2",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-2",
+      "sleep_hours": 8,
+      "sleep_date": "2026-08-26",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-08-26T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-3",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-3",
+      "sleep_hours": 6.5,
+      "sleep_date": "2026-08-27",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-08-27T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-4",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-4",
+      "sleep_hours": 5.5,
+      "sleep_date": "2026-08-28",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-08-28T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-5",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-5",
+      "sleep_hours": 7,
+      "sleep_date": "2026-08-29",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-08-29T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-6",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-6",
+      "sleep_hours": 7.5,
+      "sleep_date": "2026-08-30",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-08-30T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-7",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-7",
+      "sleep_hours": 8,
+      "sleep_date": "2026-08-31",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-08-31T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-8",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-8",
+      "sleep_hours": 7,
+      "sleep_date": "2026-09-01",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-09-01T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-9",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-9",
+      "sleep_hours": 6,
+      "sleep_date": "2026-09-02",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-09-02T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-10",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-10",
+      "sleep_hours": 7.2,
+      "sleep_date": "2026-09-03",
+      "notes": "Felt slightly restless in the morning.",
+      "created_at": "2026-09-03T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-11",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-11",
+      "sleep_hours": 7.8,
+      "sleep_date": "2026-09-04",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-09-04T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-12",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-12",
+      "sleep_hours": 8.2,
+      "sleep_date": "2026-09-05",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-09-05T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-13",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-13",
+      "sleep_hours": 7.6,
+      "sleep_date": "2026-09-06",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-09-06T22:43:26.942Z"
+    },
+    {
+      "id": "sleep-seed-14",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-14",
+      "sleep_hours": 8,
+      "sleep_date": "2026-09-07",
+      "notes": "Felt well-rested in the morning.",
+      "created_at": "2026-09-07T22:43:26.942Z"
+    }
+  ],
+  "activities": [
+    {
+      "id": "act-seed-1-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-1",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-08-25",
+      "created_at": "2026-08-26T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-1-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-1",
+      "activity_name": "Reading",
+      "duration": 60,
+      "activity_date": "2026-08-25",
+      "created_at": "2026-08-26T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-2-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-2",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-08-26",
+      "created_at": "2026-08-27T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-2-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-2",
+      "activity_name": "Socializing",
+      "duration": 60,
+      "activity_date": "2026-08-26",
+      "created_at": "2026-08-27T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-3-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-3",
+      "activity_name": "Studying",
+      "duration": 90,
+      "activity_date": "2026-08-27",
+      "created_at": "2026-08-28T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-3-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-3",
+      "activity_name": "Resting",
+      "duration": 60,
+      "activity_date": "2026-08-27",
+      "created_at": "2026-08-28T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-4-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-4",
+      "activity_name": "Resting",
+      "duration": 60,
+      "activity_date": "2026-08-28",
+      "created_at": "2026-08-29T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-5-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-5",
+      "activity_name": "Walking",
+      "duration": 30,
+      "activity_date": "2026-08-29",
+      "created_at": "2026-08-30T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-5-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-5",
+      "activity_name": "Reading",
+      "duration": 60,
+      "activity_date": "2026-08-29",
+      "created_at": "2026-08-30T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-6-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-6",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-08-30",
+      "created_at": "2026-08-31T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-6-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-6",
+      "activity_name": "Hobbies",
+      "duration": 60,
+      "activity_date": "2026-08-30",
+      "created_at": "2026-08-31T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-7-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-7",
+      "activity_name": "Socializing",
+      "duration": 60,
+      "activity_date": "2026-08-31",
+      "created_at": "2026-09-01T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-7-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-7",
+      "activity_name": "Walking",
+      "duration": 30,
+      "activity_date": "2026-08-31",
+      "created_at": "2026-09-01T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-8-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-8",
+      "activity_name": "Studying",
+      "duration": 90,
+      "activity_date": "2026-09-01",
+      "created_at": "2026-09-02T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-9-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-9",
+      "activity_name": "Resting",
+      "duration": 60,
+      "activity_date": "2026-09-02",
+      "created_at": "2026-09-03T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-10-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-10",
+      "activity_name": "Walking",
+      "duration": 30,
+      "activity_date": "2026-09-03",
+      "created_at": "2026-09-04T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-10-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-10",
+      "activity_name": "Reading",
+      "duration": 60,
+      "activity_date": "2026-09-03",
+      "created_at": "2026-09-04T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-11-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-11",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-09-04",
+      "created_at": "2026-09-05T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-11-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-11",
+      "activity_name": "Studying",
+      "duration": 90,
+      "activity_date": "2026-09-04",
+      "created_at": "2026-09-05T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-12-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-12",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-09-05",
+      "created_at": "2026-09-06T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-12-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-12",
+      "activity_name": "Socializing",
+      "duration": 60,
+      "activity_date": "2026-09-05",
+      "created_at": "2026-09-06T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-12-2",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-12",
+      "activity_name": "Hobbies",
+      "duration": 60,
+      "activity_date": "2026-09-05",
+      "created_at": "2026-09-06T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-13-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-13",
+      "activity_name": "Walking",
+      "duration": 30,
+      "activity_date": "2026-09-06",
+      "created_at": "2026-09-07T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-13-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-13",
+      "activity_name": "Reading",
+      "duration": 60,
+      "activity_date": "2026-09-06",
+      "created_at": "2026-09-07T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-14-0",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-14",
+      "activity_name": "Exercise",
+      "duration": 45,
+      "activity_date": "2026-09-07",
+      "created_at": "2026-09-08T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-14-1",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-14",
+      "activity_name": "Studying",
+      "duration": 90,
+      "activity_date": "2026-09-07",
+      "created_at": "2026-09-08T05:43:26.942Z"
+    },
+    {
+      "id": "act-seed-14-2",
+      "user_id": "demo-user-001",
+      "journal_entry_id": "entry-seed-14",
+      "activity_name": "Socializing",
+      "duration": 60,
+      "activity_date": "2026-09-07",
+      "created_at": "2026-09-08T05:43:26.942Z"
+    }
+  ],
+  "insights": [
+    {
+      "id": "ins-001",
+      "user_id": "demo-user-001",
+      "insight_text": "Your recorded mood was more positive on days when you logged exercise.",
+      "insight_type": "correlation",
+      "created_at": "2026-09-07T15:43:26.943Z"
+    },
+    {
+      "id": "ins-002",
+      "user_id": "demo-user-001",
+      "insight_text": "Your average sleep duration this week was 7.5 hours.",
+      "insight_type": "summary",
+      "created_at": "2026-09-07T15:43:26.943Z"
+    },
+    {
+      "id": "ins-003",
+      "user_id": "demo-user-001",
+      "insight_text": "You recorded more positive journal sentiment this week than last week.",
+      "insight_type": "trend",
+      "created_at": "2026-09-07T15:43:26.943Z"
+    },
+    {
+      "id": "ins-004",
+      "user_id": "demo-user-001",
+      "insight_text": "You maintained a 7-day consistent reflection streak.",
+      "insight_type": "streak",
+      "created_at": "2026-09-07T15:43:26.943Z"
+    }
+  ],
+  "mood_records": [
+    {
+      "id": "mood-seed-1",
+      "user_id": "demo-user-001",
+      "mood": "Happy",
+      "date": "2026-08-25",
+      "journal_entry_id": "entry-seed-1",
+      "created_at": "2026-08-26T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-2",
+      "user_id": "demo-user-001",
+      "mood": "Very Happy",
+      "date": "2026-08-26",
+      "journal_entry_id": "entry-seed-2",
+      "created_at": "2026-08-27T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-3",
+      "user_id": "demo-user-001",
+      "mood": "Neutral",
+      "date": "2026-08-27",
+      "journal_entry_id": "entry-seed-3",
+      "created_at": "2026-08-28T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-4",
+      "user_id": "demo-user-001",
+      "mood": "Sad",
+      "date": "2026-08-28",
+      "journal_entry_id": "entry-seed-4",
+      "created_at": "2026-08-29T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-5",
+      "user_id": "demo-user-001",
+      "mood": "Neutral",
+      "date": "2026-08-29",
+      "journal_entry_id": "entry-seed-5",
+      "created_at": "2026-08-30T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-6",
+      "user_id": "demo-user-001",
+      "mood": "Happy",
+      "date": "2026-08-30",
+      "journal_entry_id": "entry-seed-6",
+      "created_at": "2026-08-31T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-7",
+      "user_id": "demo-user-001",
+      "mood": "Happy",
+      "date": "2026-08-31",
+      "journal_entry_id": "entry-seed-7",
+      "created_at": "2026-09-01T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-8",
+      "user_id": "demo-user-001",
+      "mood": "Neutral",
+      "date": "2026-09-01",
+      "journal_entry_id": "entry-seed-8",
+      "created_at": "2026-09-02T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-9",
+      "user_id": "demo-user-001",
+      "mood": "Sad",
+      "date": "2026-09-02",
+      "journal_entry_id": "entry-seed-9",
+      "created_at": "2026-09-03T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-10",
+      "user_id": "demo-user-001",
+      "mood": "Neutral",
+      "date": "2026-09-03",
+      "journal_entry_id": "entry-seed-10",
+      "created_at": "2026-09-04T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-11",
+      "user_id": "demo-user-001",
+      "mood": "Happy",
+      "date": "2026-09-04",
+      "journal_entry_id": "entry-seed-11",
+      "created_at": "2026-09-05T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-12",
+      "user_id": "demo-user-001",
+      "mood": "Very Happy",
+      "date": "2026-09-05",
+      "journal_entry_id": "entry-seed-12",
+      "created_at": "2026-09-06T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-13",
+      "user_id": "demo-user-001",
+      "mood": "Happy",
+      "date": "2026-09-06",
+      "journal_entry_id": "entry-seed-13",
+      "created_at": "2026-09-07T03:43:26.942Z"
+    },
+    {
+      "id": "mood-seed-14",
+      "user_id": "demo-user-001",
+      "mood": "Very Happy",
+      "date": "2026-09-07",
+      "journal_entry_id": "entry-seed-14",
+      "created_at": "2026-09-08T03:43:26.942Z"
+    }
+  ]
+}

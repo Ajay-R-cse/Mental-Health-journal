@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark {
+  background-color: #0b0f19;
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  background-color: #f8fafc;
+  color-scheme: light;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* ==========================================================================
+   LIGHT MODE COMPREHENSIVE THEME STYLES (when .dark class is absent)
+   ========================================================================== */
+
+html:not(.dark) {
+  /* Main Backgrounds */
+  .bg-\[\#0b0f19\] {
+    background-color: #f8fafc !important;
+  }
+
+  /* Header and Footer */
+  header.bg-\[\#0b0f19\],
+  nav.bg-\[\#0b0f19\],
+  footer.bg-\[\#0b0f19\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  /* Primary Cards */
+  .bg-\[\#13192b\],
+  .bg-\[\#111728\],
+  .bg-\[\#0e1424\],
+  .bg-\[\#181d33\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04) !important;
+  }
+
+  /* Sub-cards, Chips, Badges & Secondary Surfaces */
+  .bg-\[\#141b2f\],
+  .bg-\[\#182035\],
+  .bg-\[\#161f36\] {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .bg-\[\#1b233a\] {
+    background-color: #e2e8f0 !important;
+  }
+
+  /* Input fields, Textareas, Selects */
+  .bg-\[\#0e1322\],
+  input.bg-\[\#182035\],
+  textarea.bg-\[\#182035\],
+  select.bg-\[\#182035\],
+  input.bg-\[\#13192b\],
+  textarea.bg-\[\#13192b\],
+  select.bg-\[\#13192b\] {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  /* Borders */
+  .border-\[\#1a2238\],
+  .border-\[\#242f4e\],
+  .border-\[\#283556\],
+  .border-\[\#232f4e\],
+  .border-\[\#161d30\],
+  .border-\[\#1f2842\],
+  .border-\[\#1e263d\],
+  .border-\[\#2b3558\],
+  .border-\[\#202945\] {
+    border-color: #e2e8f0 !important;
+  }
+
+  /* Hover States */
+  .hover\:bg-\[\#182035\]:hover,
+  .hover\:bg-\[\#1a233c\]:hover,
+  .hover\:bg-\[\#161f36\]:hover,
+  .hover\:bg-\[\#1b233a\]:hover {
+    background-color: #e2e8f0 !important;
+  }
+
+  /* Text Colors in Light Mode */
+  h1.text-white,
+  h2.text-white,
+  h3.text-white,
+  h4.text-white,
+  h5.text-white,
+  h6.text-white,
+  span.text-white:not(button span):not([class*="bg-"] span),
+  p.text-white:not(button p):not([class*="bg-"] p),
+  div.text-white:not(button div):not([class*="bg-"] div),
+  strong.text-white {
+    color: #0f172a !important;
+  }
+
+  .text-slate-100 {
+    color: #0f172a !important;
+  }
+  .text-slate-200 {
+    color: #1e293b !important;
+  }
+  .text-slate-300 {
+    color: #334155 !important;
+  }
+  .text-slate-400 {
+    color: #64748b !important;
+  }
+
+  /* Selected / Active Accent Pills */
+  .bg-\[\#291e47\] {
+    background-color: #ede9fe !important;
+    border-color: #c4b5fd !important;
+    color: #6d28d9 !important;
+  }
+  .bg-\[\#291e47\] * {
+    color: #6d28d9 !important;
+  }
+
+  /* Preserve White Text on Solid Buttons & Badges */
+  button.bg-\[\#7c3aed\],
+  button.bg-\[\#7c3aed\] *,
+  button.bg-\[\#3b82f6\],
+  button.bg-\[\#3b82f6\] *,
+  button.bg-purple-600,
+  button.bg-purple-600 *,
+  button.bg-emerald-600,
+  button.bg-emerald-600 *,
+  button.bg-rose-600,
+  button.bg-rose-600 *,
+  button.bg-blue-600,
+  button.bg-blue-600 *,
+  button.bg-teal-600,
+  button.bg-teal-600 *,
+  [class*="from-\[\#7c3aed\]"],
+  [class*="from-\[\#7c3aed\]"] * {
+    color: #ffffff !important;
+  }
+
+  /* Subheader row border */
+  .border-t.border-\[\#161d30\] {
+    border-top-color: #e2e8f0 !important;
+  }
+}
+
+/* ==========================================================================
+   DARK MODE CHART & COMPONENT HARMONIZATION (when .dark class IS present)
+   ========================================================================== */
+
+html.dark {
+  /* Chart Cards that used bg-white */
+  .bg-white:not(button):not(input) {
+    background-color: #13192b !important;
+    border-color: #242f4e !important;
+    color: #f1f5f9 !important;
+  }
+
+  .bg-white h3.text-slate-800,
+  .bg-white .text-slate-800 {
+    color: #f8fafc !important;
+  }
+
+  .bg-white .text-slate-500 {
+    color: #94a3b8 !important;
+  }
+
+  .bg-white .text-slate-600 {
+    color: #cbd5e1 !important;
+  }
+
+  .bg-white .bg-slate-100 {
+    background-color: #182035 !important;
+  }
+
+  .bg-white .bg-slate-50 {
+    background-color: #0e1322 !important;
+    border-color: #242f4e !important;
+    color: #f1f5f9 !important;
+  }
+
+  .bg-white .border-slate-100,
+  .bg-white .border-slate-200,
+  .bg-white .border-slate-200\/80 {
+    border-color: #242f4e !important;
+  }
+
+  /* Modals */
+  .fixed .bg-white {
+    background-color: #13192b !important;
+    border-color: #242f4e !important;
+  }
+
+  /* Recharts grid lines in dark mode */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: #1e2842 !important;
+  }
+}
+
+
