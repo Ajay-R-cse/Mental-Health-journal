@@ -13,7 +13,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/nlp")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://ais-dev-eaylqam3b4pqyvceot5dyf-805459357790.asia-southeast1.run.app",
+    "https://ais-pre-eaylqam3b4pqyvceot5dyf-805459357790.asia-southeast1.run.app"
+})
 public class SentimentController {
 
     private static final Logger log = LoggerFactory.getLogger(SentimentController.class);
@@ -36,7 +41,8 @@ public class SentimentController {
      *     "sentiment": "Positive",
      *     "sentimentScore": 0.5,
      *     "provider": "Stanford CoreNLP Java Microservice",
-     *     "emotionalKeywords": []
+     *     "emotionalKeywords": [],
+     *     "status": "processed"
      *   }
      */
     @PostMapping("/sentiment")
@@ -50,15 +56,13 @@ public class SentimentController {
 
     /**
      * GET /api/nlp/health
-     * Health check endpoint for container orchestrators (e.g. Google Cloud Run).
+     * Health check endpoint returning standard status schema.
      */
     @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> healthCheck() {
+    public ResponseEntity<Map<String, String>> healthCheck() {
         return ResponseEntity.ok(Map.of(
-                "status", "UP",
-                "service", "java-nlp-service",
-                "provider", "Stanford CoreNLP 4.5.5",
-                "timestamp", System.currentTimeMillis()
+                "status", "ok",
+                "service", "java-stanford-corenlp"
         ));
     }
 }

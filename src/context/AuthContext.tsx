@@ -8,6 +8,7 @@ import {
   updateProfile as updateFirebaseProfile,
   updatePassword as updateFirebasePassword,
   reauthenticateWithCredential,
+  reauthenticateWithPopup,
   EmailAuthProvider,
   User as FirebaseUser,
 } from 'firebase/auth';
@@ -27,6 +28,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (name: string, email: string) => Promise<void>;
   changePassword: (currentPass: string, newPass: string) => Promise<void>;
+  verifyIdentity: (password?: string) => Promise<boolean>;
+  authProvider: 'google' | 'password';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -341,6 +344,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateFirebasePassword(fbUser, newPass);
   };
 
+  const verifyIdentity = async (password?: string): Promise<boolean> => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) {
+      throw new Error('No authenticated user session found.');
+    }
+
+    const isGoogle = fbUser.providerData.some((p) => p.providerId === 'google.com');
+
+    if (isGoogle) {
+      try {
+        await reauthenticateWithPopup(fbUser, googleProvider);
+        return true;
+      } catch (err: any) {
+        if (err.code === 'auth/popup-closed-by-user') {
+          throw new Error('Google re-authentication was cancelled.');
+        }
+        throw new Error(err.message || 'Google re-authentication failed.');
+      }
+    } else {
+      if (!password || !password.trim()) {
+        throw new Error('Please enter your account password to verify your identity.');
+      }
+      if (!fbUser.email) {
+        throw new Error('No email found for account verification.');
+      }
+      try {
+        const credential = EmailAuthProvider.credential(fbUser.email, password.trim());
+        await reauthenticateWithCredential(fbUser, credential);
+        return true;
+      } catch (err: any) {
+        if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+          throw new Error('Incorrect password. Please try again.');
+        }
+        throw new Error(err.message || 'Password verification failed.');
+      }
+    }
+  };
+
+  const authProvider: 'google' | 'password' =
+    auth.currentUser?.providerData.some((p) => p.providerId === 'google.com')
+      ? 'google'
+      : 'password';
+
+  // 15-minute inactivity timeout (900,000 ms) auto-logout
+  useEffect(() => {
+    if (!user) return;
+
+    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        logout();
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const trackedEvents = ['mousemove', 'keydown', 'scroll'] as const;
+    trackedEvents.forEach((evt) => {
+      window.addEventListener(evt, resetTimer, { passive: true });
+    });
+
+    // Start timer on mount or when user changes
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      trackedEvents.forEach((evt) => {
+        window.removeEventListener(evt, resetTimer);
+      });
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -348,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isAuthenticated: !!user,
         isLoading,
+        authProvider,
         login,
         loginAsDemo,
         loginWithGoogle,
@@ -355,6 +432,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         updateProfile,
         changePassword,
+        verifyIdentity,
       }}
     >
       {children}

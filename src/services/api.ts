@@ -1,6 +1,7 @@
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { firestoreService } from './firestoreService';
+import { aiService } from './aiService';
 import {
   User,
   JournalEntry,
@@ -8,6 +9,7 @@ import {
   ActivityRecord,
   InsightRecord,
   MoodRecord,
+  MoodCheckRecord,
   SentimentAnalysisResult,
   DashboardSummary,
   DashboardTrends,
@@ -161,15 +163,23 @@ class ApiClient {
   // ================= NLP Sentiment Analysis =================
   async analyzeText(text: string): Promise<{ success: boolean; result: SentimentAnalysisResult }> {
     const nlp = await firestoreService.analyzeTextWithNLP(text);
+    const score = nlp.sentimentScore;
+    const normalizedScore = nlp.normalizedScore !== undefined
+      ? nlp.normalizedScore
+      : Number(Math.max(0, Math.min(1, (score + 1) / 2)).toFixed(2));
+
+    const positiveSet = new Set(['grateful', 'happy', 'calm', 'peaceful', 'joy', 'excited', 'inspired', 'content', 'relief', 'good', 'glad', 'love', 'blessed']);
+    const negativeSet = new Set(['sad', 'anxious', 'stressed', 'tired', 'down', 'exhausted', 'bad', 'frustrated', 'worried', 'angry', 'terrible', 'upset', 'disappointed']);
+
     return {
       success: true,
       result: {
         sentiment: nlp.sentiment,
-        sentiment_score: nlp.sentimentScore,
-        normalized_score: (nlp.sentimentScore + 10) / 20,
-        word_count: text.split(/\s+/).filter(Boolean).length,
-        positive_words: nlp.emotionalKeywords.filter((k) => ['grateful', 'happy', 'calm', 'peaceful', 'joy', 'excited', 'inspired', 'content', 'relief', 'good', 'glad', 'love', 'blessed'].includes(k)),
-        negative_words: nlp.emotionalKeywords.filter((k) => ['sad', 'anxious', 'stressed', 'tired', 'down', 'exhausted', 'bad', 'frustrated', 'worried', 'angry', 'terrible', 'upset'].includes(k)),
+        sentiment_score: score,
+        normalized_score: normalizedScore,
+        word_count: nlp.wordCount ?? text.split(/\s+/).filter(Boolean).length,
+        positive_words: nlp.positiveWords ?? (nlp.emotionalKeywords || []).filter((k) => positiveSet.has(k)),
+        negative_words: nlp.negativeWords ?? (nlp.emotionalKeywords || []).filter((k) => negativeSet.has(k)),
         provider: nlp.provider,
       },
     };
@@ -195,6 +205,53 @@ class ApiClient {
   async getDashboardTrends(days = 7): Promise<{ success: boolean; trends: DashboardTrends }> {
     const trends = await firestoreService.getDashboardTrends(days);
     return { success: true, trends };
+  }
+
+  // ================= Multimodal Mood Checks =================
+  async saveMoodCheck(data: {
+    manualMood?: string;
+    cameraEstimate?: string;
+    cameraConfidence?: number;
+    voiceEstimate?: string;
+    voiceConfidence?: number;
+    journalSentiment?: string;
+    journalEntryId?: string;
+    date?: string;
+  }): Promise<{ success: boolean; record: MoodCheckRecord }> {
+    const record = await firestoreService.saveMoodCheck(data);
+    return { success: true, record };
+  }
+
+  async getMoodChecks(limitCount = 30): Promise<{ success: boolean; records: MoodCheckRecord[] }> {
+    const records = await firestoreService.getMoodChecks(limitCount);
+    return { success: true, records };
+  }
+
+  async deleteMoodCheck(id: string): Promise<{ success: boolean }> {
+    await firestoreService.deleteMoodCheck(id);
+    return { success: true };
+  }
+
+  // ================= AI Journal Insights & Reflection =================
+  async generateJournalInsights(params: {
+    journalText: string;
+    manualMood?: string;
+    journalSentiment?: string;
+  }) {
+    return aiService.generateJournalInsights(params);
+  }
+
+  async getSavedJournalInsight(journalEntryId: string) {
+    return aiService.getSavedJournalInsight(journalEntryId);
+  }
+
+  async saveJournalInsight(journalEntryId: string, insights: any) {
+    return aiService.saveJournalInsight(journalEntryId, insights);
+  }
+
+  async generateWeeklyReflection(data?: any) {
+    const input = data || (await aiService.gatherUserWeeklyData());
+    return aiService.generateWeeklyReflection(input);
   }
 }
 

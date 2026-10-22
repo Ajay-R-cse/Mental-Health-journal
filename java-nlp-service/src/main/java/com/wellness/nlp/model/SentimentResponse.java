@@ -11,6 +11,8 @@ public class SentimentResponse {
     private double sentimentScore;
     private String provider = "Stanford CoreNLP Java Microservice";
     private List<String> emotionalKeywords = new ArrayList<>();
+    private String status = "processed";
+    private boolean processed = true;
 
     public SentimentResponse() {
     }
@@ -20,6 +22,24 @@ public class SentimentResponse {
         this.sentimentScore = sentimentScore;
         this.provider = provider;
         this.emotionalKeywords = emotionalKeywords != null ? emotionalKeywords : new ArrayList<>();
+        this.status = "processed";
+        this.processed = true;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public boolean isProcessed() {
+        return processed;
+    }
+
+    public void setProcessed(boolean processed) {
+        this.processed = processed;
     }
 
     public String getSentiment() {

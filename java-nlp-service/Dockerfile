@@ -17,11 +17,11 @@ WORKDIR /app
 # Copy artifact from build stage
 COPY --from=build /app/target/java-nlp-service-1.0.0.jar app.jar
 
-# Cloud Run dynamic port handling (defaults to 9000 if not set by container environment)
-ENV PORT=9000
+# Cloud Run dynamic port handling (defaults to 8080 if not set by container environment)
+ENV PORT=8080
 ENV JAVA_OPTS="-Xmx2048m -Xms512m -XX:+UseG1GC"
 
-EXPOSE 9000
+EXPOSE 8080
 
 # Execute Spring Boot microservice with memory tuning for CoreNLP models
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar --server.port=${PORT}"]

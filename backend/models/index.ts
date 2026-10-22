@@ -1,5 +1,5 @@
 export type MoodType = 'Very Happy' | 'Happy' | 'Neutral' | 'Sad' | 'Very Sad';
-export type SentimentType = 'Positive' | 'Neutral' | 'Negative';
+export type SentimentType = 'Positive' | 'Neutral' | 'Negative' | 'Mixed';
 
 export interface User {
   id: string;
@@ -69,5 +69,6 @@ export interface SentimentAnalysisResult {
   word_count: number;
   positive_words: string[];
   negative_words: string[];
+  emotionalKeywords?: string[];
   provider: string;
 }

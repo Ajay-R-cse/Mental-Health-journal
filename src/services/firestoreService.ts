@@ -19,6 +19,7 @@ import {
   ActivityRecord,
   InsightRecord,
   MoodRecord,
+  MoodCheckRecord,
   DashboardSummary,
   DashboardTrends,
   MoodType,
@@ -56,6 +57,10 @@ class FirestoreService {
   public async analyzeTextWithNLP(text: string): Promise<{
     sentiment: SentimentType;
     sentimentScore: number;
+    normalizedScore?: number;
+    wordCount?: number;
+    positiveWords?: string[];
+    negativeWords?: string[];
     emotionalKeywords: string[];
     provider: string;
   }> {
@@ -69,9 +74,14 @@ class FirestoreService {
       if (res.ok) {
         const data = await res.json();
         if (data.result) {
+          const score = data.result.sentimentScore ?? data.result.sentiment_score ?? 0;
           return {
             sentiment: data.result.sentiment || 'Neutral',
-            sentimentScore: data.result.sentimentScore ?? data.result.sentiment_score ?? 0,
+            sentimentScore: score,
+            normalizedScore: data.result.normalized_score ?? Number(((score + 1) / 2).toFixed(2)),
+            wordCount: data.result.word_count,
+            positiveWords: data.result.positive_words || [],
+            negativeWords: data.result.negative_words || [],
             emotionalKeywords: data.result.emotionalKeywords || [],
             provider: data.result.provider || 'Stanford CoreNLP Java Microservice',
           };
@@ -86,29 +96,124 @@ class FirestoreService {
   }
 
   private fallbackSentiment(text: string) {
-    const positiveWords = ['grateful', 'happy', 'calm', 'peaceful', 'joy', 'excited', 'inspired', 'content', 'relief', 'good', 'glad', 'love', 'blessed'];
-    const negativeWords = ['sad', 'anxious', 'stressed', 'tired', 'down', 'exhausted', 'bad', 'frustrated', 'worried', 'angry', 'terrible', 'upset'];
+    const positiveWords = new Set([
+      'grateful', 'happy', 'calm', 'peaceful', 'joy', 'excited', 'inspired', 'content', 'relief',
+      'good', 'glad', 'love', 'blessed', 'supported', 'support', 'friends', 'friend', 'passed',
+      'pass', 'okay', 'ok', 'wonderful', 'great'
+    ]);
+    const negativeWords = new Set([
+      'sad', 'anxious', 'stressed', 'tired', 'down', 'exhausted', 'bad', 'frustrated', 'worried',
+      'angry', 'terrible', 'upset', 'disappointed', 'failed', 'failure', 'delay', 'ruined', 'ruin'
+    ]);
+    const negations = new Set(['not', 'never', 'no', "don't", 'dont', "didn't", 'didnt', "wasn't", 'wasnt', "isn't", 'isnt', 'without', 'barely', 'hardly']);
+    const concurrencePattern = /\b(at the same time|mixed feelings|both|bittersweet|conflicted|part of me)\b/i;
 
-    const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+    const trimmed = text.trim();
+    const tokens = trimmed.toLowerCase().match(/[a-z']+/g) || [];
     let score = 0;
+    const positiveWordsFound: string[] = [];
+    const negativeWordsFound: string[] = [];
     const matchedKeywords: string[] = [];
 
-    words.forEach((w) => {
-      if (positiveWords.includes(w)) {
-        score += 2;
-        if (!matchedKeywords.includes(w)) matchedKeywords.push(w);
-      } else if (negativeWords.includes(w)) {
-        score -= 2;
-        if (!matchedKeywords.includes(w)) matchedKeywords.push(w);
+    // Fast-path guard for short neutral factual statements
+    if (tokens.length <= 3 && !trimmed.includes('!') && !trimmed.includes('?')) {
+      const lower = trimmed.toLowerCase();
+      const hasEmotion = ['happy', 'sad', 'angry', 'depressed', 'anxious', 'joy', 'excited'].some((e) => lower.includes(e));
+      if (!hasEmotion) {
+        return {
+          sentiment: 'Neutral' as SentimentType,
+          sentimentScore: 0,
+          normalizedScore: 0.5,
+          wordCount: tokens.length,
+          positiveWords: [],
+          negativeWords: [],
+          emotionalKeywords: [],
+          provider: 'Explicit Local Fallback (Java NLP Microservice Unreachable)',
+        };
       }
-    });
+    }
 
-    const clamped = Math.max(-10, Math.min(10, score));
-    const sentiment: SentimentType = clamped > 0 ? 'Positive' : clamped < 0 ? 'Negative' : 'Neutral';
+    // Find contrast clause ("but", "however")
+    let contrastIdx = -1;
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i] === 'but' || tokens[i] === 'however') {
+        contrastIdx = i;
+        break;
+      }
+    }
+
+    for (let i = 0; i < tokens.length; i++) {
+      const w = tokens[i];
+      let isNegated = false;
+      for (let j = Math.max(0, i - 3); j < i; j++) {
+        if (negations.has(tokens[j])) {
+          isNegated = !isNegated;
+        }
+      }
+
+      const weight = contrastIdx >= 0 && i > contrastIdx ? 2 : 1;
+
+      if (positiveWords.has(w)) {
+        if (isNegated) {
+          score -= 2 * weight;
+          if (!negativeWordsFound.includes(`not ${w}`)) negativeWordsFound.push(`not ${w}`);
+        } else {
+          score += 2 * weight;
+          if (!positiveWordsFound.includes(w)) positiveWordsFound.push(w);
+          if (!matchedKeywords.includes(w)) matchedKeywords.push(w);
+        }
+      } else if (negativeWords.has(w)) {
+        if (isNegated) {
+          score += 1 * weight;
+          if (!positiveWordsFound.includes(`not ${w}`)) positiveWordsFound.push(`not ${w}`);
+        } else {
+          score -= 2 * weight;
+          if (!negativeWordsFound.includes(w)) negativeWordsFound.push(w);
+          if (!matchedKeywords.includes(w)) matchedKeywords.push(w);
+        }
+      }
+    }
+
+    // Standardized compound scale: -1.0 to +1.0
+    const clampedRaw = Math.max(-10, Math.min(10, score));
+    const standardizedScore = Number((clampedRaw / 10).toFixed(2));
+
+    const hasBothValences = positiveWordsFound.length > 0 && negativeWordsFound.length > 0;
+    const hasConcurrence = concurrencePattern.test(trimmed);
+    const hasExplicitPositive = positiveWordsFound.some((w) => !w.startsWith('not '));
+
+    let sentiment: SentimentType = 'Neutral';
+    if (hasBothValences && (hasConcurrence || contrastIdx >= 0)) {
+      if (hasConcurrence) {
+        sentiment = 'Mixed';
+      } else if (standardizedScore <= -0.5) {
+        sentiment = 'Negative';
+      } else {
+        sentiment = 'Mixed';
+      }
+    } else if (hasBothValences && Math.abs(standardizedScore) < 0.3) {
+      sentiment = 'Mixed';
+    } else if (standardizedScore >= 0.16) {
+      if (!hasExplicitPositive && standardizedScore < 0.35) {
+        sentiment = 'Neutral';
+      } else {
+        sentiment = 'Positive';
+      }
+    } else if (standardizedScore <= -0.16) {
+      sentiment = 'Negative';
+    } else {
+      sentiment = 'Neutral';
+    }
+
+    const normalizedScore = Number(((standardizedScore + 1) / 2).toFixed(2));
 
     return {
       sentiment,
-      sentimentScore: clamped,
+      sentimentScore: standardizedScore,
+      normalizedScore,
+      wordCount: tokens.length,
+      positiveWords: positiveWordsFound,
+      negativeWords: negativeWordsFound,
       emotionalKeywords: matchedKeywords,
       provider: 'Explicit Local Fallback (Java NLP Microservice Unreachable)',
     };
@@ -1050,6 +1155,109 @@ class FirestoreService {
     }
 
     return streak;
+  }
+
+  // ========================================================
+  // Multimodal Mood Checks (Optional Camera, Voice, Manual, Sentiment)
+  // ========================================================
+  public async saveMoodCheck(data: {
+    manualMood?: string;
+    cameraEstimate?: string;
+    cameraConfidence?: number;
+    voiceEstimate?: string;
+    voiceConfidence?: number;
+    journalSentiment?: string;
+    journalEntryId?: string;
+    date?: string;
+  }): Promise<MoodCheckRecord> {
+    const uid = this.getUid();
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString();
+
+    const recordPayload: Record<string, any> = {
+      userId: uid,
+      date: data.date || today,
+      createdAt: now,
+    };
+
+    if (data.journalEntryId) recordPayload.journalEntryId = data.journalEntryId;
+    if (data.manualMood) recordPayload.manualMood = data.manualMood;
+    if (data.cameraEstimate) {
+      recordPayload.cameraEstimate = data.cameraEstimate;
+      recordPayload.cameraConfidence = data.cameraConfidence ?? 0.7;
+    }
+    if (data.voiceEstimate) {
+      recordPayload.voiceEstimate = data.voiceEstimate;
+      recordPayload.voiceConfidence = data.voiceConfidence ?? 0.65;
+    }
+    if (data.journalSentiment) {
+      recordPayload.journalSentiment = data.journalSentiment;
+    }
+
+    try {
+      const colRef = collection(db, 'moodChecks');
+      const docRef = await addDoc(colRef, recordPayload);
+      return {
+        id: docRef.id,
+        userId: uid,
+        date: recordPayload.date,
+        journalEntryId: recordPayload.journalEntryId,
+        manualMood: recordPayload.manualMood,
+        cameraEstimate: recordPayload.cameraEstimate,
+        cameraConfidence: recordPayload.cameraConfidence,
+        voiceEstimate: recordPayload.voiceEstimate,
+        voiceConfidence: recordPayload.voiceConfidence,
+        journalSentiment: recordPayload.journalSentiment,
+        createdAt: recordPayload.createdAt,
+      };
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'moodChecks');
+      throw error;
+    }
+  }
+
+  public async getMoodChecks(limitCount = 30): Promise<MoodCheckRecord[]> {
+    const uid = this.getUid();
+    try {
+      const colRef = collection(db, 'moodChecks');
+      const q = query(
+        colRef,
+        where('userId', '==', uid),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          id: docSnap.id,
+          userId: d.userId,
+          date: d.date,
+          journalEntryId: d.journalEntryId,
+          manualMood: d.manualMood,
+          cameraEstimate: d.cameraEstimate,
+          cameraConfidence: d.cameraConfidence,
+          voiceEstimate: d.voiceEstimate,
+          voiceConfidence: d.voiceConfidence,
+          journalSentiment: d.journalSentiment,
+          createdAt: d.createdAt,
+        };
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'moodChecks');
+      return [];
+    }
+  }
+
+  public async deleteMoodCheck(id: string): Promise<void> {
+    this.getUid();
+    try {
+      const docRef = doc(db, 'moodChecks', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `moodChecks/${id}`);
+      throw error;
+    }
   }
 }
 

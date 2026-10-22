@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mental-health-journal-secure-jwt-secret-key-2026';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is missing.');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface AuthenticatedRequest extends Request {
   user?: {

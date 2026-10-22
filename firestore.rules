@@ -45,5 +45,17 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
+
+    // Mood Checks collection (Multimodal: manual, camera estimate, voice estimate, journal sentiment)
+    match /moodChecks/{moodCheckId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // AI Journal Insights collection
+    match /aiInsights/{insightId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
   }
 }

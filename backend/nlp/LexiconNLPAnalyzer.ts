@@ -58,6 +58,18 @@ const POSITIVE_LEXICON: Record<string, number> = {
   comfortable: 0.6,
   cheer: 0.65,
   cheerful: 0.7,
+  // Mild positive & support
+  okay: 0.28,
+  ok: 0.25,
+  supported: 0.7,
+  support: 0.65,
+  friends: 0.6,
+  friend: 0.6,
+  passed: 0.6,
+  pass: 0.55,
+  glad: 0.65,
+  relieved: 0.7,
+  relief: 0.7,
 };
 
 const NEGATIVE_LEXICON: Record<string, number> = {
@@ -79,6 +91,8 @@ const NEGATIVE_LEXICON: Record<string, number> = {
   furious: -0.8,
   hate: -0.8,
   hated: -0.8,
+  ruined: -0.8,
+  ruin: -0.75,
   // Moderate negative
   sad: -0.7,
   unhappy: -0.7,
@@ -107,12 +121,14 @@ const NEGATIVE_LEXICON: Record<string, number> = {
   hurt: -0.65,
   pain: -0.7,
   painful: -0.7,
-  disappointed: -0.7,
+  disappointed: -0.75,
+  disappointing: -0.7,
+  disappointment: -0.7,
   gloomy: -0.65,
   down: -0.5,
   rough: -0.55,
   struggling: -0.7,
-  failed: -0.7,
+  failed: -0.75,
   failure: -0.75,
   burnout: -0.8,
   sick: -0.6,
@@ -120,6 +136,8 @@ const NEGATIVE_LEXICON: Record<string, number> = {
   bored: -0.4,
   confused: -0.45,
   unmotivated: -0.65,
+  delay: -0.5,
+  delayed: -0.5,
 };
 
 const INTENSIFIERS: Record<string, number> = {
@@ -134,6 +152,7 @@ const INTENSIFIERS: Record<string, number> = {
   deeply: 1.35,
   incredibly: 1.5,
   exceptionally: 1.5,
+  still: 1.25,
   slightly: 0.6,
   somewhat: 0.7,
   bit: 0.8,
@@ -147,6 +166,12 @@ const NEGATIONS = new Set([
   "couldn't", 'couldnt', "don't", 'dont', "haven't", 'havent', "hadn't", 'hadnt',
   'without', 'barely', 'hardly'
 ]);
+
+const CONTRAST_WORDS = new Set(['but', 'however', 'yet', 'nevertheless', 'although', 'though']);
+const SARCASM_REGEX = /\b(oh\s+great|just\s+great|just\s+wonderful|yeah\s+right|thanks\s+a\s+lot|as\s+if)\b/i;
+const CONCURRENCE_REGEX = /\b(at the same time|mixed feelings|both|bittersweet|conflicted|part of me)\b/i;
+const TEMPORAL_CESSATION_REGEX = /\b(anymore|no longer|not anymore)\b/i;
+const TEMPORAL_CONTINUATION_REGEX = /\b(still|yet|ongoing)\b/i;
 
 export class LexiconNLPAnalyzer implements INLPAnalyzer {
   readonly name = 'VADER-Lexicon Analyzer';
@@ -165,10 +190,48 @@ export class LexiconNLPAnalyzer implements INLPAnalyzer {
       };
     }
 
+    const trimmed = text.trim();
     // Clean and split words
-    const rawTokens = text.toLowerCase().match(/[a-z']+|[!?]+/g) || [];
+    const rawTokens = trimmed.toLowerCase().match(/[a-z']+|[!?]+/g) || [];
     const tokens = rawTokens.filter((t) => t.length > 0);
     const wordCount = tokens.filter((t) => /^[a-z']+/i.test(t)).length;
+
+    // Fast-path guard: Short factual statement without strong sentiment indicators
+    if (wordCount <= 3 && !trimmed.includes('!') && !trimmed.includes('?')) {
+      const lower = trimmed.toLowerCase();
+      const hasStrongWord =
+        lower.includes('happy') ||
+        lower.includes('sad') ||
+        lower.includes('depressed') ||
+        lower.includes('anxious') ||
+        lower.includes('terrible') ||
+        lower.includes('excited') ||
+        lower.includes('great') ||
+        lower.includes('awful');
+      if (!hasStrongWord) {
+        return {
+          sentiment: 'Neutral',
+          sentiment_score: 0,
+          normalized_score: 0.5,
+          word_count: wordCount,
+          positive_words: [],
+          negative_words: [],
+          provider: this.name,
+        };
+      }
+    }
+
+    const hasSarcasticCue = SARCASM_REGEX.test(trimmed);
+    const hasTemporalCessation = TEMPORAL_CESSATION_REGEX.test(trimmed);
+
+    // Identify positions of contrastive conjunctions
+    let contrastIndex = -1;
+    for (let i = 0; i < tokens.length; i++) {
+      if (CONTRAST_WORDS.has(tokens[i])) {
+        contrastIndex = i;
+        break;
+      }
+    }
 
     let totalScore = 0;
     let scoredWordsCount = 0;
@@ -178,13 +241,15 @@ export class LexiconNLPAnalyzer implements INLPAnalyzer {
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
       let wordValence = 0;
+      let isCandidatePositive = false;
+      let isCandidateNegative = false;
 
       if (POSITIVE_LEXICON[token] !== undefined) {
         wordValence = POSITIVE_LEXICON[token];
-        positiveWordsFound.push(token);
+        isCandidatePositive = true;
       } else if (NEGATIVE_LEXICON[token] !== undefined) {
         wordValence = NEGATIVE_LEXICON[token];
-        negativeWordsFound.push(token);
+        isCandidateNegative = true;
       }
 
       if (wordValence !== 0) {
@@ -202,40 +267,88 @@ export class LexiconNLPAnalyzer implements INLPAnalyzer {
           }
         }
 
+        // Contrastive clause weighting: "passed exam, but feel disappointed"
+        // Tokens following 'but' or 'however' carry dominant discourse focus (2.0x weight)
+        const inPostContrastClause = contrastIndex >= 0 && i > contrastIndex;
+        const clauseWeight = inPostContrastClause ? 2.0 : 1.0;
+
         if (isNegated) {
-          // Negate and slightly dampen
-          wordValence = -wordValence * 0.75;
+          if (isCandidatePositive) {
+            // Negation of positive: "not happy", "not good" expresses dissatisfaction / negative state
+            wordValence = -wordValence * 0.85;
+            if (hasTemporalCessation) {
+              wordValence *= 1.15;
+            }
+            // "not happy" must NEVER appear under positive words!
+            negativeWordsFound.push(`not ${token}`);
+          } else if (isCandidateNegative) {
+            // Negation of negative: "not sad", "no longer sad", "not worried"
+            // Linguistic grounding: The absence or cessation of a negative emotional state
+            // indicates relief, equanimity, or a return to baseline. It does NOT constitute
+            // active joyful or strongly positive affect unless paired with explicit positive tokens.
+            wordValence = -wordValence * 0.22;
+            positiveWordsFound.push(`not ${token}`);
+          }
+        } else if (hasSarcasticCue && isCandidatePositive) {
+          // Sarcasm flips positive token ("oh great, another bug")
+          wordValence = -Math.abs(wordValence) * 0.8;
+          negativeWordsFound.push(token);
         } else {
           wordValence *= intensityModifier;
+          if (isCandidatePositive) {
+            positiveWordsFound.push(token);
+          } else if (isCandidateNegative) {
+            negativeWordsFound.push(token);
+          }
         }
 
-        // Check if next token is exclamation mark
+        // Check if following token is exclamation mark
         if (i + 1 < tokens.length && tokens[i + 1].includes('!')) {
           wordValence *= 1.25;
         }
 
-        totalScore += wordValence;
+        totalScore += wordValence * clauseWeight;
         scoredWordsCount++;
       }
     }
 
-    // Normalized compound score: -1 to +1 (standard VADER compound approximation)
+    // Normalized compound score: -1 to +1 (calibrated for decimal valence range)
     let compoundScore = 0;
     if (scoredWordsCount > 0) {
-      const alpha = 15;
+      const alpha = 1.2;
       compoundScore = totalScore / Math.sqrt(totalScore * totalScore + alpha);
-      // Cap between -1 and 1
       compoundScore = Math.max(-1, Math.min(1, compoundScore));
     }
 
-    // Convert to 0.00 to 1.00 format (like 0.84 for positive)
-    const normalizedScore = Number(((compoundScore + 1) / 2).toFixed(2));
     const roundedScore = Number(compoundScore.toFixed(2));
+    const normalizedScore = Number(((roundedScore + 1) / 2).toFixed(2));
 
-    let sentiment: 'Positive' | 'Neutral' | 'Negative' = 'Neutral';
-    if (compoundScore >= 0.15) {
-      sentiment = 'Positive';
-    } else if (compoundScore <= -0.15) {
+    let sentiment: 'Positive' | 'Neutral' | 'Negative' | 'Mixed' = 'Neutral';
+
+    const hasBothValences = positiveWordsFound.length > 0 && negativeWordsFound.length > 0;
+    const hasConcurrence = CONCURRENCE_REGEX.test(trimmed);
+    const hasExplicitPositive = positiveWordsFound.some((w) => !w.startsWith('not '));
+
+    if (hasBothValences && (hasConcurrence || contrastIndex >= 0)) {
+      if (hasConcurrence) {
+        sentiment = 'Mixed';
+      } else if (roundedScore <= -0.5) {
+        // Dominant negative post-contrast clause (e.g. "passed exam, but feel disappointed")
+        sentiment = 'Negative';
+      } else {
+        sentiment = 'Mixed';
+      }
+    } else if (hasBothValences && Math.abs(roundedScore) < 0.25) {
+      sentiment = 'Mixed';
+    } else if (roundedScore >= 0.16) {
+      // If the only positive signal was a negated negative (absence of sadness),
+      // prefer Neutral unless score is strongly positive (>= 0.35) or explicit positive tokens exist
+      if (!hasExplicitPositive && roundedScore < 0.35) {
+        sentiment = 'Neutral';
+      } else {
+        sentiment = 'Positive';
+      }
+    } else if (roundedScore <= -0.16) {
       sentiment = 'Negative';
     } else {
       sentiment = 'Neutral';

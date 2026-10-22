@@ -82,6 +82,41 @@
         "createdAt": { "type": "string", "description": "Creation timestamp" }
       },
       "required": ["userId", "mood", "date", "createdAt"]
+    },
+    "MoodCheck": {
+      "title": "MoodCheck",
+      "description": "Multimodal optional mood check combining manual mood, camera expression estimate, voice estimate, and journal sentiment",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "date": { "type": "string", "description": "Date of mood check YYYY-MM-DD" },
+        "manualMood": { "type": "string", "description": "Optional manual mood status" },
+        "cameraEstimate": { "type": "string", "description": "Optional broad facial expression category estimate" },
+        "cameraConfidence": { "type": "number", "description": "Confidence percentage of camera estimate (0 to 1)" },
+        "voiceEstimate": { "type": "string", "description": "Optional broad vocal state category estimate" },
+        "voiceConfidence": { "type": "number", "description": "Confidence percentage of voice estimate (0 to 1)" },
+        "journalSentiment": { "type": "string", "description": "Optional associated journal sentiment category" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "date", "createdAt"]
+    },
+    "AIJournalInsight": {
+      "title": "AIJournalInsight",
+      "description": "AI-generated wellness and reflection analysis for a journal entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "journalEntryId": { "type": "string", "description": "Associated journal entry ID" },
+        "summary": { "type": "string", "description": "1-3 sentence summary of the journal entry" },
+        "themes": { "type": "array", "description": "Extracted themes (studies, work, sleep, etc.)" },
+        "emotionalTone": { "type": "string", "description": "Descriptive emotional tone" },
+        "positiveMoments": { "type": "array", "description": "Positive moments and achievements" },
+        "reflectionPrompt": { "type": "string", "description": "Self-reflection journaling question" },
+        "suggestedNextStep": { "type": "string", "description": "Simple non-medical wellness suggestion" },
+        "disclaimer": { "type": "string", "description": "Non-diagnostic disclaimer" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "journalEntryId", "summary", "themes", "emotionalTone", "positiveMoments", "reflectionPrompt", "suggestedNextStep", "disclaimer", "createdAt"]
     }
   },
   "firestore": {
@@ -108,6 +143,14 @@
     "/moods/{moodId}": {
       "schema": "MoodRecord",
       "description": "Periodic mood check-in entries"
+    },
+    "/moodChecks/{moodCheckId}": {
+      "schema": "MoodCheck",
+      "description": "Multimodal mood check records (manual, camera, voice, journal sentiment)"
+    },
+    "/aiInsights/{insightId}": {
+      "schema": "AIJournalInsight",
+      "description": "AI-generated journal wellness reflections and insights"
     }
   }
 }

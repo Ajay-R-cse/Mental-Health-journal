@@ -13,6 +13,7 @@ import { JournalPage } from './pages/JournalPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { RelaxationPage } from './pages/RelaxationPage';
 import { JournalHistoryPage } from './pages/JournalHistoryPage';
+import { MoodCheckPage } from './pages/MoodCheckPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MoodTrackingPage } from './pages/MoodTrackingPage';
 import { SleepTrackingPage } from './pages/SleepTrackingPage';
@@ -59,6 +60,7 @@ const AuthenticatedApp: React.FC = () => {
         {activeTab === 'analytics' && <AnalyticsPage onNavigate={(tab) => setActiveTab(tab as ActiveTab)} />}
         {activeTab === 'relaxation' && <RelaxationPage />}
         {activeTab === 'history' && <JournalHistoryPage />}
+        {activeTab === 'mood-check' && <MoodCheckPage onNavigate={(tab) => setActiveTab(tab)} />}
 
         {/* Secondary Detailed Views */}
         {activeTab === 'dashboard' && (

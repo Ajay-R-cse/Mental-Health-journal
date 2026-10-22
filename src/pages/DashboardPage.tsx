@@ -7,6 +7,8 @@ import { SentimentBreakdownChart } from '../components/charts/SentimentBreakdown
 import { SleepTrendChart } from '../components/charts/SleepTrendChart';
 import { MoodVsSleepChart } from '../components/charts/MoodVsSleepChart';
 import { ActivityFrequencyChart } from '../components/charts/ActivityFrequencyChart';
+import { MultimodalMoodInsightsCard } from '../components/charts/MultimodalMoodInsightsCard';
+import { AIWeeklyReflectionCard } from '../components/AIWeeklyReflectionCard';
 import {
   Smile,
   Moon,
@@ -43,8 +45,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   const loadDashboardData = async (days = timeframe, isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true);
-    else setLoading(true);
+    // When timeframe changes or data already exists, do NOT set loading to true.
+    // Only use setRefreshing(true) so the existing charts stay on the screen while fetching in the background.
+    if (summary || isManualRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
     try {
       const [sumRes, trendRes] = await Promise.all([
@@ -315,6 +322,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* AI Weekly Reflection Section */}
+      <AIWeeklyReflectionCard />
+
+      {/* Multimodal Mood Insights (Manual vs Sentiment vs Camera vs Voice) */}
+      <MultimodalMoodInsightsCard onNavigate={onNavigate} />
 
       {/* Recent Journal Entries Table / Cards */}
       <div className="bg-white dark:bg-[#13192b] p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-[#242f4e] shadow-xs transition-colors duration-200">

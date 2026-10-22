@@ -14,7 +14,7 @@ export class StanfordCoreNLPAdapter implements INLPAnalyzer {
   readonly description = 'Java Stanford CoreNLP Spring Boot Microservice adapter';
   
   private fallbackAnalyzer = new LexiconNLPAnalyzer();
-  private javaNlpUrl = process.env.JAVA_NLP_SERVICE_URL || process.env.STANFORD_CORENLP_URL || 'http://localhost:9000';
+  private javaNlpUrl = process.env.JAVA_NLP_SERVICE_URL || process.env.STANFORD_CORENLP_URL || 'http://localhost:8080';
 
   async analyze(text: string): Promise<SentimentAnalysisResult> {
     // Primary: Call the Java Spring Boot Stanford CoreNLP microservice
@@ -23,12 +23,12 @@ export class StanfordCoreNLPAdapter implements INLPAnalyzer {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(3000), // 3s timeout
+        signal: AbortSignal.timeout(6000), // 6s timeout to handle CoreNLP processing latency
       });
 
       if (response.ok) {
         const data = (await response.json()) as {
-          sentiment?: 'Positive' | 'Neutral' | 'Negative';
+          sentiment?: 'Positive' | 'Neutral' | 'Negative' | 'Mixed';
           sentimentScore?: number;
           provider?: string;
           emotionalKeywords?: string[];
@@ -39,13 +39,17 @@ export class StanfordCoreNLPAdapter implements INLPAnalyzer {
         const normalizedScore = Number(((sentimentScore + 1) / 2).toFixed(2));
         const words = text.split(/\s+/).filter(Boolean);
 
+        const positiveSet = new Set(['calm', 'productive', 'peaceful', 'happy', 'grateful', 'joy', 'excited', 'wonderful', 'good', 'great', 'energized', 'relaxed', 'serene', 'content']);
+        const negativeSet = new Set(['anxious', 'stressed', 'sad', 'tired', 'down', 'exhausted', 'bad', 'worried', 'difficult', 'frustrating', 'frustrated', 'depressed', 'angry', 'terrible']);
+
         return {
           sentiment,
           sentiment_score: sentimentScore,
           normalized_score: normalizedScore,
           word_count: words.length,
-          positive_words: (data.emotionalKeywords || []).filter((w) => ['calm', 'productive', 'peaceful', 'happy', 'grateful', 'joy', 'excited'].includes(w)),
-          negative_words: (data.emotionalKeywords || []).filter((w) => ['anxious', 'stressed', 'sad', 'tired', 'down', 'exhausted', 'bad', 'worried'].includes(w)),
+          positive_words: (data.emotionalKeywords || []).filter((w) => positiveSet.has(w)),
+          negative_words: (data.emotionalKeywords || []).filter((w) => negativeSet.has(w)),
+          emotionalKeywords: data.emotionalKeywords || [],
           provider: data.provider || 'Stanford CoreNLP Java Microservice',
         };
       }

@@ -21,6 +21,16 @@ public class SentimentControllerTest {
     private CoreNlpSentimentService sentimentService;
 
     @Test
+    public void testHealthEndpoint() {
+        ResponseEntity<java.util.Map<String, String>> health = sentimentController.healthCheck();
+        assertNotNull(health);
+        assertEquals(200, health.getStatusCode().value());
+        assertNotNull(health.getBody());
+        assertEquals("ok", health.getBody().get("status"));
+        assertEquals("java-stanford-corenlp", health.getBody().get("service"));
+    }
+
+    @Test
     public void testPositiveSentimentEndpoint() {
         SentimentRequest request = new SentimentRequest("Today was calm and productive.");
         ResponseEntity<SentimentResponse> responseEntity = sentimentController.analyzeSentiment(request);
@@ -48,5 +58,27 @@ public class SentimentControllerTest {
         assertEquals("Negative", response.getSentiment());
         assertTrue(response.getSentimentScore() < 0.0, "Sentiment score should be negative");
         assertEquals("Stanford CoreNLP Java Microservice", response.getProvider());
+    }
+
+    @Test
+    public void testNeutralSentimentEndpoint() {
+        SentimentRequest request = new SentimentRequest("Today was an ordinary day.");
+        ResponseEntity<SentimentResponse> responseEntity = sentimentController.analyzeSentiment(request);
+
+        assertNotNull(responseEntity);
+        assertEquals(200, responseEntity.getStatusCode().value());
+
+        SentimentResponse response = responseEntity.getBody();
+        assertNotNull(response);
+        assertEquals("Neutral", response.getSentiment());
+        assertEquals("Stanford CoreNLP Java Microservice", response.getProvider());
+    }
+
+    @Test
+    public void testEmptyTextHandling() {
+        SentimentResponse response = sentimentService.analyzeSentiment("");
+        assertNotNull(response);
+        assertEquals("Neutral", response.getSentiment());
+        assertEquals(0.0, response.getSentimentScore());
     }
 }

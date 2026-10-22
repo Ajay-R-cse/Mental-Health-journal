@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ActiveTab, DashboardSummary } from '../types';
+import { ActiveTab, DashboardSummary, JournalEntry } from '../types';
 import { api } from '../services/api';
+import { ExportAuthModal } from './ExportAuthModal';
 import {
   Brain,
   PenLine,
@@ -24,6 +25,9 @@ import {
   User as UserIcon,
   Activity,
   Sparkles,
+  Camera,
+  FileText,
+  Database,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -32,11 +36,52 @@ interface NavbarProps {
   onQuickJournal?: () => void;
 }
 
+/**
+ * Escapes individual CSV fields by wrapping in quotes and doubling internal quotes
+ */
+const escapeCSVField = (field: string | number | null | undefined): string => {
+  if (field === null || field === undefined) return '""';
+  const str = String(field);
+  return `"${str.replace(/"/g, '""')}"`;
+};
+
+/**
+ * Generates and initiates download of human-readable CSV formatted journal entries
+ */
+const downloadAsCSV = (entries: JournalEntry[]) => {
+  const headers = ['Date', 'Mood', 'Sleep (Hours)', 'Sentiment', 'Activities', 'Journal Text'];
+
+  const rows = entries.map((entry) => [
+    escapeCSVField(entry.entry_date || (entry.created_at ? entry.created_at.split('T')[0] : '')),
+    escapeCSVField(entry.mood || ''),
+    escapeCSVField(entry.sleep_hours !== undefined && entry.sleep_hours !== null ? entry.sleep_hours : ''),
+    escapeCSVField(entry.sentiment || ''),
+    escapeCSVField(Array.isArray(entry.activities) ? entry.activities.join('; ') : ''),
+    escapeCSVField(entry.journal_text || ''),
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map((row) => row.join(',')),
+  ].join('\r\n');
+
+  // Prepend UTF-8 BOM (\uFEFF) so Excel/Google Sheets correctly render Unicode & emojis
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mindspace_journal_export_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, verifyIdentity, authProvider } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -45,7 +90,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     entries: 3,
     avgMood: '4.0',
   });
-  const [exporting, setExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv' | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  const handleExportData = (format: 'json' | 'csv') => {
+    setExportFormat(format);
+    setIsExportModalOpen(true);
+  };
 
   // Load summary stats for header pills
   useEffect(() => {
@@ -75,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           avgMood: avg,
         });
       } catch (err) {
-        // Fallback default numbers from Screenshot 49
+        // Fallback default numbers
         setStats({ streak: 7, entries: 3, avgMood: '4.0' });
       }
     };
@@ -83,39 +135,54 @@ export const Navbar: React.FC<NavbarProps> = ({
     fetchStats();
   }, [activeTab]);
 
-  // Export all user data as JSON file (Download icon in subheader)
-  const handleExportData = async () => {
-    setExporting(true);
+  // Re-authenticates user via verifyIdentity before releasing encrypted/private journals
+  const executeSecureExport = async (password?: string) => {
+    setIsExporting(true);
     try {
-      const res = await api.getJournals();
-      const exportPayload = {
-        app: 'MindSpace - Mental Health Journal & Mood Analyzer',
-        exported_at: new Date().toISOString(),
-        user: { name: user?.name, email: user?.email },
-        stats,
-        entries: res.entries,
-      };
+      // 1. Verify credentials via AuthContext
+      await verifyIdentity(password);
 
-      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mindspace_journal_export_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Export error:', err);
+      // 2. Fetch full journal records and metadata
+      const res = await api.getJournals();
+      const entries = res.entries || [];
+
+      // 3. Output file according to selected exportFormat
+      if (exportFormat === 'csv') {
+        downloadAsCSV(entries);
+      } else if (exportFormat === 'json') {
+        // Default / JSON backup export
+        const exportPayload = {
+          app: 'MindSpace - Mental Health Journal & Mood Analyzer',
+          exported_at: new Date().toISOString(),
+          user: { name: user?.name, email: user?.email },
+          stats,
+          entries,
+        };
+
+        const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mindspace_journal_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // Close modal on successful export
+      setIsExportModalOpen(false);
     } finally {
-      setExporting(false);
+      setIsExporting(false);
+      setExportFormat(null);
     }
   };
 
   const primaryTabs: Array<{ id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'journal', label: 'Journal', icon: PenLine },
+    { id: 'mood-check', label: 'Mood Check', icon: Camera },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'relaxation', label: 'Relaxation', icon: Leaf },
     { id: 'history', label: 'History', icon: Clock },
@@ -276,16 +343,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </button>
 
-            {/* Download / Export Button */}
+            {/* Button 1 (Read): Export CSV */}
             <button
-              onClick={handleExportData}
-              disabled={exporting}
+              onClick={() => handleExportData('csv')}
+              disabled={isExporting}
               className="p-2 rounded-xl bg-slate-100 dark:bg-[#141b2f] border border-slate-200 dark:border-[#232f4e] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#1a233c] transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Export Journal Records & Insights (JSON)"
+              title="Export Journal Records as CSV (Excel / Sheets)"
             >
-              <Download className={`w-4 h-4 text-cyan-600 dark:text-cyan-400 ${exporting ? 'animate-bounce' : ''}`} />
+              <FileText className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${isExporting && exportFormat === 'csv' ? 'animate-bounce' : ''}`} />
               <span className="text-[11px] hidden sm:inline text-slate-600 dark:text-slate-400 font-medium">
-                {exporting ? 'Exporting...' : 'Export'}
+                {isExporting && exportFormat === 'csv' ? 'Exporting...' : 'Export CSV'}
+              </span>
+            </button>
+
+            {/* Button 2 (Backup): Backup JSON */}
+            <button
+              onClick={() => handleExportData('json')}
+              disabled={isExporting}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-[#141b2f] border border-slate-200 dark:border-[#232f4e] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#1a233c] transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Backup Full System Data as JSON"
+            >
+              <Database className={`w-4 h-4 text-cyan-600 dark:text-cyan-400 ${isExporting && exportFormat === 'json' ? 'animate-bounce' : ''}`} />
+              <span className="text-[11px] hidden sm:inline text-slate-600 dark:text-slate-400 font-medium">
+                {isExporting && exportFormat === 'json' ? 'Backing up...' : 'Backup JSON'}
               </span>
             </button>
           </div>
@@ -374,6 +454,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
       )}
+
+      {/* Re-Authentication Modal for Secure Data Export */}
+      <ExportAuthModal
+        isOpen={isExportModalOpen}
+        onClose={() => {
+          setIsExportModalOpen(false);
+          setExportFormat(null);
+        }}
+        onConfirm={executeSecureExport}
+        isLoading={isExporting}
+        authProvider={authProvider}
+      />
     </header>
   );
 };

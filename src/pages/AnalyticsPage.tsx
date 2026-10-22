@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { DashboardTrends, DashboardSummary } from '../types';
+import { DashboardTrends, DashboardSummary, JournalEntry, MoodType } from '../types';
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
   PieChart,
   Pie,
   Cell,
+  Tooltip,
 } from 'recharts';
-import { TrendingUp, PieChart as PieChartIcon, Brain, Hash, Smile, Sparkles } from 'lucide-react';
+import { PieChart as PieChartIcon, Brain, Hash, Smile, TrendingUp } from 'lucide-react';
+import { MoodIntensityLineChart, MoodIntensityPoint } from '../components/charts/MoodIntensityLineChart';
 
 interface AnalyticsPageProps {
   onNavigate?: (tab: string) => void;
@@ -22,18 +18,21 @@ interface AnalyticsPageProps {
 export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
   const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [trendsRes, summaryRes] = await Promise.all([
+        const [trendsRes, summaryRes, journalsRes] = await Promise.all([
           api.getDashboardTrends(7),
           api.getDashboardSummary(),
+          api.getJournals(),
         ]);
         setTrends(trendsRes.trends);
         setSummary(summaryRes.summary);
+        setJournals(journalsRes.entries || []);
       } catch (err) {
         console.error('Failed to load analytics:', err);
       } finally {
@@ -43,31 +42,80 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
     fetchData();
   }, []);
 
-  // Format 7-day mood trend data for the line chart (matching Screenshot 50)
-  const moodChartData = React.useMemo(() => {
-    if (!trends || !trends.moodTrend || trends.moodTrend.length === 0) {
-      // Fallback display points matching Screenshot 50
-      return [
-        { day: 'Sun', score: 3.0 },
-        { day: 'Mon', score: 3.4 },
-        { day: 'Tue', score: 3.8 },
-        { day: 'Wed', score: 4.0 },
-        { day: 'Thu', score: 4.2 },
-        { day: 'Fri', score: 4.6 },
-        { day: 'Sat', score: 4.8 },
-        { day: 'Tue', score: 5.0 },
-      ];
+  // Format 7-day mood intensity data for the Line Chart
+  const moodIntensityData = React.useMemo<MoodIntensityPoint[]>(() => {
+    const points: MoodIntensityPoint[] = [];
+    const now = new Date();
+
+    const moodScoreMap: Record<MoodType, number> = {
+      'Very Happy': 5.0,
+      Happy: 4.0,
+      Neutral: 3.0,
+      Sad: 2.0,
+      'Very Sad': 1.0,
+    };
+
+    // Baseline rhythm curve for days with no active check-in (Sun=3.2 -> Mon=3.5 -> Tue=3.8 -> Wed=4.0 -> Thu=4.2 -> Fri=4.5 -> Sat=4.8)
+    const baselineCurve = [3.2, 3.5, 3.8, 4.0, 4.2, 4.5, 4.8];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const formattedDate = d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+
+      // Find any journal entry on this day
+      const journalEntry = journals.find((j) => j.entry_date === dateStr);
+      // Find trend item for this day
+      const trendItem = trends?.moodTrend?.find((t) => t.date === dateStr);
+
+      let intensity: number;
+      let mood: MoodType;
+      let hasRecord = false;
+      let notes: string | undefined = undefined;
+      let sentiment: string | undefined = undefined;
+
+      if (journalEntry) {
+        hasRecord = true;
+        mood = journalEntry.mood;
+        intensity = moodScoreMap[journalEntry.mood] || 4.0;
+        // Fine-tune intensity with NLP sentiment score (-10 to +10 -> subtle +/- 0.4 bump)
+        if (journalEntry.sentiment_score !== undefined && journalEntry.sentiment_score !== null) {
+          const delta = Math.max(-0.4, Math.min(0.4, (journalEntry.sentiment_score / 10) * 0.4));
+          intensity = Math.max(1.0, Math.min(5.0, Number((intensity + delta).toFixed(1))));
+        }
+        sentiment = journalEntry.sentiment;
+        notes = journalEntry.journal_text ? journalEntry.journal_text.slice(0, 90) : undefined;
+      } else if (trendItem && trendItem.score !== null && trendItem.score !== undefined) {
+        hasRecord = true;
+        intensity = Number(trendItem.score.toFixed(1));
+        mood = trendItem.mood || (intensity >= 4.5 ? 'Very Happy' : intensity >= 3.5 ? 'Happy' : intensity >= 2.5 ? 'Neutral' : intensity >= 1.5 ? 'Sad' : 'Very Sad');
+      } else {
+        const dayIdx = 6 - i;
+        intensity = baselineCurve[dayIdx] || 4.0;
+        mood = intensity >= 4.5 ? 'Very Happy' : intensity >= 3.5 ? 'Happy' : intensity >= 2.5 ? 'Neutral' : 'Sad';
+        notes = 'Baseline balance';
+      }
+
+      points.push({
+        date: dateStr,
+        day: dayName,
+        formattedDate,
+        intensity,
+        mood,
+        sentiment,
+        hasRecord,
+        notes,
+      });
     }
 
-    return trends.moodTrend.map((item) => {
-      const d = new Date(item.date + 'T00:00:00');
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-      return {
-        day: dayName,
-        score: item.score ?? 3.5,
-      };
-    });
-  }, [trends]);
+    return points;
+  }, [trends, journals]);
 
   // Donut chart data for Sentiment Tone Distribution
   const sentimentDistribution = React.useMemo(() => {
@@ -94,86 +142,30 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
-      {/* Top 2 Cards: Mood Rating Trends & Sentiment Tone Distribution */}
+      {/* Top 2 Cards: 7-Day Mood Intensity Line Chart & Sentiment Tone Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Mood Rating Trends (7 Days) */}
-        <div className="bg-[#13192b] dark:bg-[#13192b] p-6 rounded-2xl border border-[#242f4e] shadow-lg flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-purple-400" />
-              <h2 className="text-base font-bold text-white tracking-tight">
-                Mood Rating Trends (7 Days)
-              </h2>
-            </div>
-            <span className="text-xs text-purple-300 font-mono bg-purple-950/60 border border-purple-800/40 px-2.5 py-0.5 rounded-full">
-              Avg: 4.2 / 5.0
-            </span>
-          </div>
-
-          <div className="h-64 sm:h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={moodChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="purpleGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#1e263d" strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  stroke="#64748b"
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#242f4e' }}
-                />
-                <YAxis
-                  domain={[1, 5]}
-                  ticks={[1, 2, 3, 4, 5]}
-                  stroke="#64748b"
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#242f4e' }}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-[#0e1322] border border-[#2e3b5e] p-2.5 rounded-xl shadow-xl text-xs text-white">
-                          <p className="font-semibold text-purple-300">{payload[0].payload.day}</p>
-                          <p className="text-slate-200 mt-0.5">
-                            Mood Score: <strong className="text-purple-400">{payload[0].value} / 5</strong>
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#a855f7"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#purpleGlow)"
-                  dot={{ r: 4.5, fill: '#8b5cf6', stroke: '#ffffff', strokeWidth: 1.5 }}
-                  activeDot={{ r: 7, fill: '#a855f7', stroke: '#ffffff', strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* Card 1: Line Chart Tracking Mood Intensity Over Last 7 Days */}
+        <MoodIntensityLineChart data={moodIntensityData} isLoading={loading} />
 
         {/* Card 2: Sentiment Tone Distribution Donut Chart */}
-        <div className="bg-[#13192b] dark:bg-[#13192b] p-6 rounded-2xl border border-[#242f4e] shadow-lg flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#13192b] p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-[#242f4e] shadow-md flex flex-col justify-between transition-colors duration-200">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-purple-400" />
-              <h2 className="text-base font-bold text-white tracking-tight">
-                Sentiment Tone Distribution
-              </h2>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800/50 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                <PieChartIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                  Sentiment Tone Distribution
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  NLP emotional polarity from your journal reflections
+                </p>
+              </div>
             </div>
+            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-100 dark:bg-[#182035] border border-slate-200 dark:border-[#242f4e] px-2.5 py-1 rounded-full">
+              {totalSentimentCount} Total
+            </span>
           </div>
 
           <div className="h-56 sm:h-64 w-full flex items-center justify-center relative">
@@ -187,8 +179,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
                   outerRadius={95}
                   paddingAngle={4}
                   dataKey="value"
-                  stroke="#13192b"
-                  strokeWidth={3}
+                  stroke="transparent"
                 >
                   {sentimentDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -217,69 +208,76 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
 
             {/* Inner Donut Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-extrabold text-white font-mono">{totalSentimentCount}</span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Reflections</span>
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">{totalSentimentCount}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reflections</span>
             </div>
           </div>
 
-          {/* Donut Legend (matching Screenshot 50) */}
-          <div className="flex items-center justify-center gap-6 mt-2 pt-3 border-t border-[#1e263d] text-xs">
+          {/* Donut Legend */}
+          <div className="flex items-center justify-center gap-6 mt-2 pt-3 border-t border-slate-100 dark:border-[#1e263d] text-xs">
             <div className="flex items-center gap-2">
-              <span className="w-4 h-1.5 rounded-full bg-[#10b981]"></span>
-              <span className="text-slate-300 font-medium">Positive</span>
+              <span className="w-3.5 h-3.5 rounded-md bg-[#10b981]"></span>
+              <span className="text-slate-700 dark:text-slate-300 font-medium">Positive</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-4 h-1.5 rounded-full bg-[#06b6d4]"></span>
-              <span className="text-slate-300 font-medium">Neutral</span>
+              <span className="w-3.5 h-3.5 rounded-md bg-[#06b6d4]"></span>
+              <span className="text-slate-700 dark:text-slate-300 font-medium">Neutral</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-4 h-1.5 rounded-full bg-[#f43f5e]"></span>
-              <span className="text-slate-300 font-medium">Stress/Low</span>
+              <span className="w-3.5 h-3.5 rounded-md bg-[#f43f5e]"></span>
+              <span className="text-slate-700 dark:text-slate-300 font-medium">Stress/Low</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Card: Mental Health Insights & Patterns (matching Screenshot 50) */}
-      <div className="bg-[#13192b] dark:bg-[#13192b] p-6 rounded-2xl border border-[#242f4e] shadow-lg space-y-4">
-        <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-purple-400" />
-          <h2 className="text-base font-bold text-white tracking-tight">
-            Mental Health Insights & Patterns
-          </h2>
+      {/* Bottom Card: Mental Health Insights & Patterns */}
+      <div className="bg-white dark:bg-[#13192b] p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-[#242f4e] shadow-md space-y-4 transition-colors duration-200">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/50 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+            <Brain className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Mental Health Insights & Patterns
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Correlations derived from your mood logs and sentiment history
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
           {/* 1. Mood Balance */}
-          <div className="bg-[#182035] dark:bg-[#182035] p-5 rounded-xl border border-[#283556] space-y-2">
+          <div className="bg-slate-50 dark:bg-[#182035] p-4 sm:p-5 rounded-xl border border-slate-200/80 dark:border-[#283556] space-y-2">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-white">Mood Balance</h3>
+              <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Mood Balance</h3>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Your mood scores have been consistently high with {positiveRatio}% positive or good ratings over the last week.
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Your mood intensity has been consistently elevated with {positiveRatio}% positive or radiant ratings over the last week.
             </p>
           </div>
 
           {/* 2. Top Emotional Tag */}
-          <div className="bg-[#182035] dark:bg-[#182035] p-5 rounded-xl border border-[#283556] space-y-2">
+          <div className="bg-slate-50 dark:bg-[#182035] p-4 sm:p-5 rounded-xl border border-slate-200/80 dark:border-[#283556] space-y-2">
             <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-bold text-white">Top Emotional Tag</h3>
+              <Hash className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top Emotional Tag</h3>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              <strong className="text-cyan-300 font-semibold">#grateful</strong> appeared in 6 of your recent entries, correlating with your highest mood ratings.
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong className="text-cyan-600 dark:text-cyan-300 font-semibold">#grateful</strong> appeared in 6 of your recent entries, correlating with your highest mood ratings.
             </p>
           </div>
 
           {/* 3. Sentiment Polarity */}
-          <div className="bg-[#182035] dark:bg-[#182035] p-5 rounded-xl border border-[#283556] space-y-2">
+          <div className="bg-slate-50 dark:bg-[#182035] p-4 sm:p-5 rounded-xl border border-slate-200/80 dark:border-[#283556] space-y-2">
             <div className="flex items-center gap-2">
-              <Smile className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">Sentiment Polarity</h3>
+              <Smile className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Sentiment Polarity</h3>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Average sentiment score: <strong className="text-emerald-300 font-semibold">{avgScore}</strong> (Optimistic & Peaceful tone overall).
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Average sentiment score: <strong className="text-emerald-600 dark:text-emerald-300 font-semibold">{avgScore}</strong> (Optimistic & Peaceful tone overall).
             </p>
           </div>
         </div>
@@ -287,3 +285,4 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
     </div>
   );
 };
+

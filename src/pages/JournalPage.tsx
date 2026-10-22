@@ -1,6 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { api } from '../services/api';
-import { MoodType, ActiveTab } from '../types';
+import {
+  MoodType,
+  ActiveTab,
+  AIJournalInsightsResponse,
+  SentimentAnalysisResult,
+  SentimentType,
+} from '../types';
+import { AIJournalInsightsCard } from '../components/AIJournalInsightsCard';
+import { CameraMoodCheckCard } from '../components/moodcheck/CameraMoodCheckCard';
 import {
   Save,
   Tag,
@@ -11,6 +19,12 @@ import {
   AlertCircle,
   Moon,
   Activity as ActivityIcon,
+  Sparkles,
+  ArrowRight,
+  BookOpen,
+  Camera,
+  Layers,
+  Check,
 } from 'lucide-react';
 
 interface JournalPageProps {
@@ -59,7 +73,6 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   onNavigate,
   onEntrySaved,
 }) => {
-  // Today formatted as in Screenshot 49 e.g. "Thu, Aug 6, 2026"
   const formattedToday = useMemo(() => {
     return new Date().toLocaleDateString('en-US', {
       weekday: 'short',
@@ -76,13 +89,36 @@ export const JournalPage: React.FC<JournalPageProps> = ({
   const [selectedActivities, setSelectedActivities] = useState<string[]>(['Mindful Breathing']);
   const [promptIndex, setPromptIndex] = useState<number>(0);
   const [journalText, setJournalText] = useState<string>('');
+  const [debouncedJournalText, setDebouncedJournalText] = useState<string>('');
+
+  // Submission & Analysis state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [latestInsights, setLatestInsights] = useState<AIJournalInsightsResponse | null>(null);
+  const [coreNlpResult, setCoreNlpResult] = useState<SentimentAnalysisResult | null>(null);
+  const [coreNlpLoading, setCoreNlpLoading] = useState<boolean>(false);
+  const [savedJournalId, setSavedJournalId] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
-  // AFINN Lexicon Client-side live calculation for instant feedback
+  // Multimodal Camera Assessment section visibility
+  const [showCameraAnalysis, setShowCameraAnalysis] = useState<boolean>(false);
+
+  const analysisSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Debounce journalText specifically for sentiment calculation to prevent UI input lag
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedJournalText(journalText);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [journalText]);
+
+  // AFINN Lexicon Client-side live calculation using debounced text for smooth typing
   const sentimentAnalysis = useMemo(() => {
-    if (!journalText.trim()) {
+    if (!debouncedJournalText.trim()) {
       return {
         score: 0,
         emoji: '😐',
@@ -139,23 +175,70 @@ export const JournalPage: React.FC<JournalPageProps> = ({
       fear: -3,
       hurt: -3,
       struggling: -2,
+      supported: 3,
+      support: 3,
+      friends: 2,
+      friend: 2,
+      passed: 2,
+      pass: 2,
+      okay: 1,
+      ok: 1,
+      delay: -2,
+      delayed: -2,
+      ruined: -3,
+      ruin: -3,
+      disappointed: -3,
     };
 
-    const words = journalText.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+    const tokens = debouncedJournalText.toLowerCase().match(/[a-z']+/g) || [];
+    const negations = new Set(['not', 'never', 'no', "don't", 'dont', "didn't", 'didnt', "wasn't", 'wasnt', "isn't", 'isnt', 'without', 'barely', 'hardly']);
     let score = 0;
     const triggers: { word: string; weight: number }[] = [];
 
-    words.forEach((w) => {
-      if (afinnDictionary[w] !== undefined) {
-        score += afinnDictionary[w];
-        if (!triggers.some((t) => t.word === w)) {
-          triggers.push({ word: w, weight: afinnDictionary[w] });
-        }
+    // Find contrast clause ("but", "however")
+    let contrastIdx = -1;
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i] === 'but' || tokens[i] === 'however') {
+        contrastIdx = i;
+        break;
       }
-    });
+    }
 
-    // Clamp score between -10 and +10
-    const clampedScore = Math.max(-10, Math.min(10, score));
+    for (let i = 0; i < tokens.length; i++) {
+      const w = tokens[i];
+      if (afinnDictionary[w] !== undefined) {
+        let isNegated = false;
+        for (let j = Math.max(0, i - 3); j < i; j++) {
+          if (negations.has(tokens[j])) {
+            isNegated = !isNegated;
+          }
+        }
+
+        const clauseWeight = contrastIdx >= 0 && i > contrastIdx ? 1.8 : 1.0;
+        let wordWeight = afinnDictionary[w];
+
+        if (isNegated) {
+          if (wordWeight > 0) {
+            wordWeight = -wordWeight * 0.85;
+          } else {
+            // Absence of negative emotion represents equanimity / mild relief rather than exuberant positive emotion
+            wordWeight = -wordWeight * 0.25;
+          }
+          const displayLabel = `not ${w}`;
+          if (!triggers.some((t) => t.word === displayLabel)) {
+            triggers.push({ word: displayLabel, weight: wordWeight });
+          }
+        } else {
+          if (!triggers.some((t) => t.word === w)) {
+            triggers.push({ word: w, weight: wordWeight });
+          }
+        }
+
+        score += wordWeight * clauseWeight;
+      }
+    }
+
+    const clampedScore = Math.max(-10, Math.min(10, Math.round(score)));
 
     let emoji = '😐';
     let title = 'Balanced & Calm';
@@ -192,7 +275,7 @@ export const JournalPage: React.FC<JournalPageProps> = ({
       triggers,
       tip,
     };
-  }, [journalText]);
+  }, [debouncedJournalText]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -214,12 +297,19 @@ export const JournalPage: React.FC<JournalPageProps> = ({
     }
   };
 
-  const PRESET_ACTIVITIES = ['Walking', 'Mindful Breathing', 'Yoga', 'Reading', 'Meditation', 'Hydration'];
+  const PRESET_ACTIVITIES = [
+    'Walking',
+    'Mindful Breathing',
+    'Yoga',
+    'Reading',
+    'Meditation',
+    'Hydration',
+  ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Common submission & analysis workflow
+  const handleAnalyzeAndSubmit = async (runFullAnalysis = true) => {
     if (!journalText.trim()) {
-      setErrorNotice('Please write a brief reflection before saving.');
+      setErrorNotice('Please write a brief reflection before submitting for analysis.');
       return;
     }
 
@@ -227,8 +317,14 @@ export const JournalPage: React.FC<JournalPageProps> = ({
     setErrorNotice(null);
     setSuccessNotice(null);
 
+    // If full analysis requested, display the optional camera analysis consent card
+    if (runFullAnalysis) {
+      setShowCameraAnalysis(true);
+    }
+
     try {
-      await api.createJournal({
+      // 1. Create journal entry in Firestore
+      const res = await api.createJournal({
         journal_text: journalText,
         mood,
         sleep_hours: sleepHours !== '' ? Number(sleepHours) : undefined,
@@ -237,39 +333,85 @@ export const JournalPage: React.FC<JournalPageProps> = ({
         entry_date: date,
       });
 
-      setSuccessNotice('Journal entry saved to Firestore & analyzed with NLP successfully!');
+      const entryId = res?.entry?.id;
+      if (entryId) {
+        setSavedJournalId(entryId);
+      }
+
+      // 2. Perform Stanford CoreNLP Sentiment Analysis
+      setCoreNlpLoading(true);
+      try {
+        const nlpRes = await api.analyzeText(journalText);
+        if (nlpRes?.result) {
+          setCoreNlpResult(nlpRes.result);
+        }
+      } catch (nlpErr) {
+        console.warn('NLP analysis fallback triggered:', nlpErr);
+      } finally {
+        setCoreNlpLoading(false);
+      }
+
+      // 3. Save AI insight if already generated
+      if (latestInsights && entryId) {
+        try {
+          await api.saveJournalInsight(entryId, latestInsights);
+        } catch (saveErr) {
+          console.warn('Could not save AI insight with journal entry:', saveErr);
+        }
+      }
+
+      setSuccessNotice('Journal entry saved to Firestore & analyzed with Stanford CoreNLP!');
       if (onEntrySaved) onEntrySaved();
 
+      // Smooth scroll down to analysis cards
       setTimeout(() => {
-        onNavigate('history');
-      }, 1000);
+        analysisSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 350);
     } catch (err: any) {
-      setErrorNotice(err.message || 'Failed to save entry');
+      setErrorNotice(err.message || 'Failed to save and analyze entry');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Convert sentiment score (-10 to +10) into percentage 0% to 100% for the gradient meter
+  // Called when user clicks "Generate AI Insights" inside the AI insights card
+  const handleTriggerAnalysisFromInsights = () => {
+    setShowCameraAnalysis(true);
+  };
+
   const meterPercentage = Math.round(((sentimentAnalysis.score + 10) / 20) * 100);
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
+      {/* Success Banner */}
       {successNotice && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-          <span>{successNotice}</span>
+        <div className="p-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successNotice}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('history')}
+              className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>View in History</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Error Banner */}
       {errorNotice && (
-        <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-medium flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+        <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-medium flex items-center gap-2 shadow-sm">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           <span>{errorNotice}</span>
         </div>
       )}
 
-      {/* 2-Column Grid matching Screenshot 49 */}
+      {/* 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Journal Entry Card */}
         <div className="bg-white dark:bg-[#13192b] p-6 rounded-2xl border border-slate-200 dark:border-[#242f4e] shadow-xs dark:shadow-lg flex flex-col justify-between space-y-5 transition-colors duration-200">
@@ -281,7 +423,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                 How are you feeling right now?
               </h2>
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{formattedToday}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              {formattedToday}
+            </span>
           </div>
 
           {/* 5 Mood cards in a row */}
@@ -302,7 +446,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                   <span className="text-2xl mb-1">{card.emoji}</span>
                   <span
                     className={`text-xs font-semibold ${
-                      isSelected ? 'text-purple-700 dark:text-[#c084fc]' : 'text-slate-500 dark:text-slate-400'
+                      isSelected
+                        ? 'text-purple-700 dark:text-[#c084fc]'
+                        : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {card.label}
@@ -348,7 +494,7 @@ export const JournalPage: React.FC<JournalPageProps> = ({
             <button
               type="button"
               onClick={handleShufflePrompt}
-              className="p-1.5 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-[#202945] rounded-lg transition-colors cursor-pointer flex-shrink-0"
+              className="p-1.5 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-[#202945] rounded-lg transition-colors cursor-pointer shrink-0"
               title="Shuffle prompt"
             >
               <Shuffle className="w-3.5 h-3.5" />
@@ -369,7 +515,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                   max="24"
                   step="0.5"
                   value={sleepHours}
-                  onChange={(e) => setSleepHours(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setSleepHours(e.target.value === '' ? '' : parseFloat(e.target.value))
+                  }
                   placeholder="7.5"
                   className="w-24 p-2 bg-white dark:bg-[#0e1322] border border-slate-200 dark:border-[#242f4e] rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
@@ -415,16 +563,28 @@ export const JournalPage: React.FC<JournalPageProps> = ({
             />
           </div>
 
-          {/* Full-width Save Button */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? 'Saving...' : 'Save Journal Entry'}</span>
-          </button>
+          {/* Action Buttons: "Analyze Journal" (triggers NLP + Gemini + Camera) & "Save Journal Entry" */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => handleAnalyzeAndSubmit(true)}
+              disabled={isSubmitting}
+              className="py-3 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 text-purple-200 shrink-0" />
+              <span>{isSubmitting ? 'Submitting & Analyzing...' : 'Analyze Journal'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAnalyzeAndSubmit(false)}
+              disabled={isSubmitting}
+              className="py-3 px-4 bg-slate-100 dark:bg-[#182035] hover:bg-slate-200 dark:hover:bg-[#202945] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#283556] font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 shrink-0" />
+              <span>Save Journal Entry</span>
+            </button>
+          </div>
         </div>
 
         {/* Right Column: Live Sentiment & Sentiment Engine */}
@@ -444,7 +604,7 @@ export const JournalPage: React.FC<JournalPageProps> = ({
 
           {/* Big Center Emoji & Status Title */}
           <div className="flex flex-col items-center text-center py-3">
-            <span className="text-6xl sm:text-7xl select-none mb-3 animate-bounce-short">
+            <span className="text-6xl sm:text-7xl select-none mb-3">
               {sentimentAnalysis.emoji}
             </span>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
@@ -458,15 +618,19 @@ export const JournalPage: React.FC<JournalPageProps> = ({
           {/* Sentiment Score Box */}
           <div className="bg-slate-50 dark:bg-[#0e1322] p-4 rounded-xl border border-slate-200 dark:border-[#242f4e] space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-400">Sentiment Score (-10 to +10)</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Sentiment Score (-10 to +10)
+              </span>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-cyan-100 dark:bg-[#083344] text-cyan-800 dark:text-[#22d3ee] border border-cyan-300 dark:border-[#0e7490]">
-                SCORE: {sentimentAnalysis.score > 0 ? `+${sentimentAnalysis.score.toFixed(1)}` : sentimentAnalysis.score.toFixed(1)}
+                SCORE:{' '}
+                {sentimentAnalysis.score > 0
+                  ? `+${sentimentAnalysis.score.toFixed(1)}`
+                  : sentimentAnalysis.score.toFixed(1)}
               </span>
             </div>
 
             {/* Gradient horizontal score bar */}
             <div className="relative h-2.5 w-full rounded-full bg-gradient-to-r from-red-500 via-yellow-400 via-cyan-400 to-emerald-500 overflow-hidden">
-              {/* Score indicator marker */}
               <div
                 className="absolute top-0 bottom-0 w-3 bg-white rounded-full shadow-md -ml-1.5 transition-all duration-300"
                 style={{ left: `${meterPercentage}%` }}
@@ -475,7 +639,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
 
             {/* Key Emotional Triggers */}
             <div className="pt-2 border-t border-slate-200 dark:border-[#1f2842] text-xs">
-              <span className="text-slate-600 dark:text-slate-400 font-medium">Key Emotional Triggers Detected: </span>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">
+                Key Emotional Triggers Detected:{' '}
+              </span>
               {sentimentAnalysis.triggers.length > 0 ? (
                 <div className="inline-flex flex-wrap gap-1.5 ml-1.5">
                   {sentimentAnalysis.triggers.map((t) => (
@@ -492,7 +658,9 @@ export const JournalPage: React.FC<JournalPageProps> = ({
                   ))}
                 </div>
               ) : (
-                <span className="text-slate-400 dark:text-slate-500 italic">No strong sentiment words detected yet.</span>
+                <span className="text-slate-400 dark:text-slate-500 italic">
+                  No strong sentiment words detected yet.
+                </span>
               )}
             </div>
           </div>
@@ -508,6 +676,172 @@ export const JournalPage: React.FC<JournalPageProps> = ({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Post-Submission / Analysis Results Section */}
+      <div ref={analysisSectionRef} className="space-y-6 pt-2">
+        {/* Section Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              Journal Analysis & Multimodal Expression Review
+            </h2>
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Synchronized NLP + AI + Visible Expression
+          </span>
+        </div>
+
+        {/* 1. Stanford CoreNLP Sentiment Result (Backend Java / Modular NLP) */}
+        {coreNlpResult && (
+          <div className="bg-white dark:bg-[#13192b] p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-[#242f4e] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-[#1e263d]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/60 text-cyan-600 dark:text-cyan-400">
+                  <Cpu className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Stanford CoreNLP Sentiment Analysis
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Engineered NLP linguistic sentiment classification
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#182035] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#283556]">
+                  {coreNlpResult.provider}
+                </span>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    coreNlpResult.sentiment === 'Positive'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/50'
+                      : coreNlpResult.sentiment === 'Negative'
+                      ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800/50'
+                      : coreNlpResult.sentiment === 'Mixed'
+                      ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/50'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                  }`}
+                >
+                  {coreNlpResult.sentiment} Sentiment
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-slate-50 dark:bg-[#0e1322] p-3 rounded-xl border border-slate-100 dark:border-[#232f50]">
+                <span className="text-[10px] text-slate-400 block uppercase">Sentiment Score</span>
+                <span className="text-base font-bold text-slate-900 dark:text-white font-mono">
+                  {coreNlpResult.sentiment_score > 0
+                    ? `+${coreNlpResult.sentiment_score.toFixed(1)}`
+                    : coreNlpResult.sentiment_score.toFixed(1)}
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#0e1322] p-3 rounded-xl border border-slate-100 dark:border-[#232f50]">
+                <span className="text-[10px] text-slate-400 block uppercase">Normalized Score</span>
+                <span className="text-base font-bold text-slate-900 dark:text-white font-mono">
+                  {Math.round(coreNlpResult.normalized_score * 100)}%
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#0e1322] p-3 rounded-xl border border-slate-100 dark:border-[#232f50]">
+                <span className="text-[10px] text-slate-400 block uppercase">Word Count</span>
+                <span className="text-base font-bold text-slate-900 dark:text-white font-mono">
+                  {coreNlpResult.word_count} words
+                </span>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#0e1322] p-3 rounded-xl border border-slate-100 dark:border-[#232f50]">
+                <span className="text-[10px] text-slate-400 block uppercase">Classification</span>
+                <span className="text-base font-bold text-cyan-600 dark:text-cyan-400">
+                  {coreNlpResult.sentiment}
+                </span>
+              </div>
+            </div>
+
+            {/* Keyword tags */}
+            {(coreNlpResult.positive_words.length > 0 || coreNlpResult.negative_words.length > 0) && (
+              <div className="pt-2 text-xs flex flex-wrap items-center gap-2">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Extracted Keywords:</span>
+                {coreNlpResult.positive_words.map((w) => (
+                  <span
+                    key={w}
+                    className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
+                  >
+                    +{w}
+                  </span>
+                ))}
+                {coreNlpResult.negative_words.map((w) => (
+                  <span
+                    key={w}
+                    className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40"
+                  >
+                    -{w}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. Gemini AI Journal Insights Section */}
+        <AIJournalInsightsCard
+          journalText={journalText}
+          manualMood={mood}
+          journalSentiment={coreNlpResult?.sentiment || sentimentAnalysis.title}
+          journalEntryId={savedJournalId || undefined}
+          onInsightsGenerated={(ins) => setLatestInsights(ins)}
+          onTriggerAnalysis={handleTriggerAnalysisFromInsights}
+        />
+
+        {/* 3. Camera Expression Estimate Card (requires explicit in-app user consent) */}
+        {showCameraAnalysis && (
+          <CameraMoodCheckCard
+            journalEntryId={savedJournalId || undefined}
+            journalSentiment={coreNlpResult?.sentiment || sentimentAnalysis.title}
+            selectedManualMood={mood}
+            onSelectManualMood={(m) => setMood(m)}
+            title="Camera Expression Estimate"
+            subtitle="Optional visible facial expression estimation processed entirely inside your browser canvas."
+          />
+        )}
+
+        {/* Navigation bottom bar when entry has been submitted */}
+        {savedJournalId && (
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#13192b] border border-slate-200 dark:border-[#242f4e] flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+                Reflection saved. All analysis signals are stored in your private Firestore records.
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => onNavigate('history')}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#7c3aed] hover:bg-[#6d28d9] text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Go to Journal History</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setJournalText('');
+                  setSuccessNotice(null);
+                  setErrorNotice(null);
+                  setCoreNlpResult(null);
+                  setSavedJournalId(null);
+                  setShowCameraAnalysis(false);
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                Write Another Entry
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

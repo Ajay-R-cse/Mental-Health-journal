@@ -12,7 +12,7 @@ import { initializeApp } from 'firebase-admin/app';
 initializeApp();
 const db = getFirestore();
 
-const JAVA_NLP_SERVICE_URL = process.env.JAVA_NLP_SERVICE_URL || 'http://localhost:9000';
+const JAVA_NLP_SERVICE_URL = process.env.JAVA_NLP_SERVICE_URL || 'http://localhost:8080';
 
 export const processJournalSentiment = onDocumentCreated('journalEntries/{entryId}', async (event) => {
   const snapshot = event.data;

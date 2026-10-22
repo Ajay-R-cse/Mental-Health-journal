@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { JournalEntry, MoodType } from '../types';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { MoodSelector } from '../components/MoodSelector';
+import { AIJournalInsightsCard } from '../components/AIJournalInsightsCard';
 import {
   Search,
   Filter,
@@ -418,6 +419,17 @@ export const JournalHistoryPage: React.FC = () => {
                   <strong className="text-slate-300">Tags:</strong> {activeEntry.tags.map((t) => `#${t}`).join(' ')}
                 </p>
               )}
+            </div>
+
+            {/* AI Journal Insights for opened entry */}
+            <div className="pt-2">
+              <AIJournalInsightsCard
+                journalText={activeEntry.journal_text}
+                manualMood={activeEntry.mood}
+                journalSentiment={activeEntry.sentiment}
+                journalEntryId={activeEntry.id}
+                autoLoadSaved={true}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
