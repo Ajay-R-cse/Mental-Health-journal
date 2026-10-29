@@ -174,8 +174,8 @@ function validateWeeklyReflection(data: any): WeeklyReflectionResult {
 }
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-const FALLBACK_MODEL_1 = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-latest';
-const FALLBACK_MODEL_2 = 'gemini-3.1-flash-lite';
+const FALLBACK_MODEL_1 = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
+const FALLBACK_MODEL_2 = 'gemini-1.5-flash';
 
 function isTransientError(err: any): boolean {
   if (!err) return false;

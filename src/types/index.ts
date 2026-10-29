@@ -70,7 +70,84 @@ export type CameraExpressionType =
   | 'Neutral expression'
   | 'Concerned / tense-looking expression'
   | 'Tired-looking expression'
-  | 'Mixed/uncertain';
+  | 'Mixed/uncertain'
+  | 'Face detected; facial landmarks were detected successfully.'
+  | 'The mouth corners appear slightly raised in this image.'
+  | 'Visible brow movement was detected.'
+  | 'Facial landmarks could not be measured reliably because of image quality.'
+  | 'No face detected. Please try another image.'
+  | 'Multiple faces detected. Please frame a single face.'
+  | 'Mouth corners appear slightly turned down in this image.';
+
+export interface FacialLandmarks {
+  faceBox: { x: number; y: number; width: number; height: number };
+  interOcularDistance: number;
+  leftEye: { x: number; y: number };
+  rightEye: { x: number; y: number };
+  leftBrow: { x: number; y: number };
+  rightBrow: { x: number; y: number };
+  noseTip: { x: number; y: number };
+  mouthLeft: { x: number; y: number };
+  mouthRight: { x: number; y: number };
+  mouthCenter: { x: number; y: number };
+}
+
+export type DetectionStatusType =
+  | 'Face detected'
+  | 'No face detected'
+  | 'Multiple faces detected';
+
+export type ExpressionCategory =
+  | 'neutral'
+  | 'happy'
+  | 'sad'
+  | 'angry'
+  | 'fearful'
+  | 'disgusted'
+  | 'surprised';
+
+export interface ExpressionScores {
+  neutral: number;
+  happy: number;
+  sad: number;
+  angry: number;
+  fearful: number;
+  disgusted: number;
+  surprised: number;
+}
+
+export interface CameraAnalysisResult {
+  faceDetected: boolean;
+  faceCount: number;
+  detectionStatus: DetectionStatusType;
+  estimatedExpression: CameraExpressionType;
+  expressionEstimate: string; // Model prediction or descriptive state
+  dominantExpression?: ExpressionCategory | null;
+  expressionScores?: ExpressionScores | null;
+  modelOutputConfidence?: number; // Max model output score (0.0 - 1.0)
+  modelLoadingStatus?: 'idle' | 'loading' | 'loaded' | 'error';
+  modelErrorMessage?: string;
+  moodEstimate: string; // Transparent non-fabricated estimate
+  classifierModelName?: string;
+  analysisQuality: 'Reliable enough to analyze' | 'Inconclusive';
+  confidence: number; // Quantitative sensor / signal clarity (0.0 - 1.0)
+  signalQuality?: 'Clear' | 'Moderate' | 'Low' | 'Insufficient';
+  isReliable?: boolean;
+  reliabilityReason?: string;
+  detectedLandmarks?: FacialLandmarks | null;
+  observableMetrics?: {
+    smileLikelihood: number;
+    openEyeScore: number;
+    browTensionScore: number;
+    symmetryScore: number;
+    lightingQuality: string;
+    mouthCurvature?: number;
+    browElevation?: number;
+    mouthOpenness?: number;
+    faceAspectRatio?: number;
+  };
+  disclaimer: string;
+}
 
 export type VoiceStateEstimateType =
   | 'Steady amplitude with balanced pace'
@@ -85,22 +162,6 @@ export type VoiceStateEstimateType =
   | 'Tired-sounding'
   | 'Tense-sounding'
   | 'Neutral/uncertain';
-
-export interface CameraAnalysisResult {
-  estimatedExpression: CameraExpressionType;
-  confidence: number; // Quantitative signal clarity (0.0 - 1.0)
-  signalQuality?: 'Clear' | 'Moderate' | 'Low' | 'Insufficient';
-  isReliable?: boolean;
-  reliabilityReason?: string;
-  observableMetrics?: {
-    smileLikelihood: number;
-    openEyeScore: number;
-    browTensionScore: number;
-    symmetryScore: number;
-    lightingQuality: string;
-  };
-  disclaimer: string;
-}
 
 export interface VoiceAnalysisResult {
   estimatedVocalState: VoiceStateEstimateType;
