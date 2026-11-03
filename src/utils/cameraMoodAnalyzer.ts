@@ -822,11 +822,6 @@ export async function analyzeImageWithClassifier(
   // 1. Run physical landmark & lighting geometry extraction
   const baseResult = analyzeCanvasFrame(source, targetCanvas);
 
-  // If geometric analysis definitively determined no face or invalid lighting, return early
-  if (!baseResult.faceDetected || baseResult.faceCount === 0) {
-    return baseResult;
-  }
-
   // 2. Run real client-side ML classification using FaceExpressionNet
   try {
     const mlInput = source instanceof HTMLVideoElement && targetCanvas ? targetCanvas : source;
@@ -834,20 +829,38 @@ export async function analyzeImageWithClassifier(
 
     if (mlResult.success && mlResult.faceDetected && mlResult.dominantExpression) {
       const formattedEstimate = expressionModelService.formatCategoryLabel(mlResult.dominantExpression);
+      const isLowConfidence = mlResult.confidence < 0.35;
+      const quality = isLowConfidence || baseResult.analysisQuality === 'Inconclusive'
+        ? 'Inconclusive'
+        : 'Reliable enough to analyze';
 
       return {
         ...baseResult,
         faceDetected: true,
+        faceCount: Math.max(1, baseResult.faceCount),
         detectionStatus: 'Face detected',
         dominantExpression: mlResult.dominantExpression,
         expressionScores: mlResult.scores,
         modelOutputConfidence: mlResult.confidence,
-        expressionEstimate: formattedEstimate,
+        expressionEstimate: isLowConfidence ? 'Unable to estimate reliably (subtle or ambiguous expression)' : formattedEstimate,
         moodEstimate: `Visible expression estimate: ${mlResult.dominantExpression}`,
         classifierModelName: mlResult.modelName,
         modelLoadingStatus: 'loaded',
-        reliabilityReason: `Observable visual estimate classified by ${mlResult.modelName} (dominant score: ${(mlResult.confidence * 100).toFixed(1)}% for "${mlResult.dominantExpression}"). Model scores describe physical appearance in the image and do not indicate internal emotional feelings.`,
+        analysisQuality: quality,
+        reliabilityReason: isLowConfidence
+          ? `Observable visual estimate by ${mlResult.modelName} is inconclusive (dominant score: ${(mlResult.confidence * 100).toFixed(1)}% for "${mlResult.dominantExpression}"). Scores reflect relative visible patterns only.`
+          : `Observable visual estimate classified by ${mlResult.modelName} (dominant score: ${(mlResult.confidence * 100).toFixed(1)}% for "${mlResult.dominantExpression}"). Model scores describe physical appearance in the image and do not indicate internal emotional feelings.`,
       };
+    } else if (mlResult.success && mlResult.faceDetected === false) {
+      // Neural detector also confirmed no face detected
+      if (!baseResult.faceDetected) {
+        return {
+          ...baseResult,
+          classifierModelName: mlResult.modelName,
+          modelLoadingStatus: 'loaded',
+          analysisQuality: 'Inconclusive',
+        };
+      }
     } else if (mlResult.error) {
       return {
         ...baseResult,

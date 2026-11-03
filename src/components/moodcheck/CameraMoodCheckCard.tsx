@@ -344,6 +344,55 @@ export const CameraMoodCheckCard: React.FC<CameraMoodCheckCardProps> = ({
   };
 
   /**
+   * Loads a bundled sample image for quick manual verification in the browser UI.
+   */
+  const handleLoadSample = (samplePath: string) => {
+    stopCamera();
+    const reqId = ++currentRequestIdRef.current;
+
+    setCapturedImage(samplePath);
+    setAnalysisResult(null);
+    setUserMatchFeedback(null);
+    setConsentStatus('consented');
+    setPermissionError(null);
+    setAnalyzing(true);
+    setStatusMessage('Loading and analyzing test sample image...');
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = async () => {
+      if (!isMountedRef.current || currentRequestIdRef.current !== reqId) return;
+
+      try {
+        setStatusMessage('Running neural expression classification on sample image...');
+        const result = await analyzeImageWithClassifier(img);
+        if (!isMountedRef.current || currentRequestIdRef.current !== reqId) return;
+
+        setAnalysisResult(result);
+        setAnalyzing(false);
+        setStatusMessage(
+          result.faceDetected
+            ? 'Facial landmarks & expression analyzed from sample.'
+            : 'Analysis complete: no face detected in sample.'
+        );
+        if (onResult) {
+          onResult(result);
+        }
+      } catch (analysisErr: any) {
+        setAnalyzing(false);
+        setPermissionError('Could not analyze the sample image: ' + (analysisErr.message || 'unknown error'));
+      }
+    };
+    img.onerror = () => {
+      if (isMountedRef.current && currentRequestIdRef.current !== reqId) {
+        setAnalyzing(false);
+        setPermissionError('Failed to load sample image.');
+      }
+    };
+    img.src = samplePath;
+  };
+
+  /**
    * Explicitly analyzes the currently displayed captured or selected image.
    * Can be invoked via the "Analyze Face" button or re-run on demand.
    */
@@ -1246,6 +1295,56 @@ export const CameraMoodCheckCard: React.FC<CameraMoodCheckCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Developer & Offline Diagnostics Section (Strictly separated from normal user workflow) */}
+      <details className="group border-t border-slate-200 dark:border-slate-800/80 pt-3 text-xs">
+        <summary className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 font-medium cursor-pointer list-none flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Shield className="w-3 h-3 text-slate-400" />
+            <span>Developer / Offline Verification Test Fixtures</span>
+          </span>
+          <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="pt-2.5 pb-1 space-y-2">
+          <p className="text-[10.5px] text-slate-400 dark:text-slate-500 leading-relaxed">
+            These test images are provided solely for developer regression verification without active hardware. The normal user workflow uses your real webcam above.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleLoadSample('/samples/sample3.jpg')}
+              disabled={analyzing}
+              className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 text-[11px] font-medium cursor-pointer transition-all"
+            >
+              Test Fixture: Smiling
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLoadSample('/samples/sample4.jpg')}
+              disabled={analyzing}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium cursor-pointer transition-all"
+            >
+              Test Fixture: Neutral
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLoadSample('/samples/sample2.jpg')}
+              disabled={analyzing}
+              className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 text-[11px] font-medium cursor-pointer transition-all"
+            >
+              Test Fixture: Downcast
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLoadSample('/samples/sample5.jpg')}
+              disabled={analyzing}
+              className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[11px] font-medium cursor-pointer transition-all"
+            >
+              Test Fixture: Alt Person
+            </button>
+          </div>
+        </div>
+      </details>
     </div>
   );
 };

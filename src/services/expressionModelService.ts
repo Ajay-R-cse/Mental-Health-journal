@@ -73,7 +73,13 @@ class ExpressionModelService {
 
     this.loadPromise = (async () => {
       try {
-        console.log('[ExpressionModelService] Loading face detection and expression models from:', this.modelBaseUrl);
+        console.log('[ExpressionModelService] Initializing TensorFlow.js backend and loading models from:', this.modelBaseUrl);
+
+        // Ensure TensorFlow backend is ready before loading model weights
+        const tf = faceapi.tf as any;
+        if (tf && typeof tf.ready === 'function') {
+          await tf.ready();
+        }
 
         // Load both tiny face detector and face expression net in parallel
         await Promise.all([

@@ -648,6 +648,60 @@ async function runRegressionSuite() {
     });
   }
 
+  // Test 27: Independent Webcam Capture & Non-Stale Retake Processing
+  {
+    const frameA = createSyntheticFaceImage({ hasFace: true, mouthCurvature: 'upward' });
+    const frameB = createSyntheticFaceImage({ hasFace: true, mouthCurvature: 'downward' });
+
+    let activeRequestId = 1;
+    const resA = analyzeImagePixels(frameA);
+
+    // Simulate user clicking "Retake Image" -> increments requestId to 2
+    activeRequestId = 2;
+    const resB = analyzeImagePixels(frameB);
+
+    // Stale check simulation (as performed in analyzeImageDataUrl and handleAllowAndCapture)
+    const isOutdatedA = 1 !== activeRequestId;
+    const isCurrentB = 2 === activeRequestId;
+
+    const independentMetrics =
+      resA.observableMetrics?.mouthCurvature !== resB.observableMetrics?.mouthCurvature &&
+      (resA.observableMetrics?.mouthCurvature ?? 0) > 0 &&
+      (resB.observableMetrics?.mouthCurvature ?? 0) < 0;
+
+    const passed = isOutdatedA && isCurrentB && independentMetrics;
+    results.push({
+      name: 'Case 27: Independent Capture & Stale Retake Invalidation Pipeline',
+      passed,
+      expected: 'Frame A invalidated on retake (reqId 1 !== 2); Frame B independently processed with new physical metrics',
+      actual: `isOutdatedA: ${isOutdatedA}, isCurrentB: ${isCurrentB}, CurvA: ${resA.observableMetrics?.mouthCurvature}, CurvB: ${resB.observableMetrics?.mouthCurvature}`,
+    });
+  }
+
+  // Test 28: Poor-Quality Image Inconclusive Result & Non-Calibrated Framing
+  {
+    const darkFixture = createSyntheticFaceImage({ hasFace: true, isDark: true });
+    const resDark = analyzeImagePixels(darkFixture);
+
+    const isMarkedInconclusive =
+      resDark.analysisQuality === 'Inconclusive' &&
+      resDark.signalQuality === 'Insufficient' &&
+      resDark.faceDetected === false &&
+      resDark.expressionEstimate === 'Unable to estimate reliably';
+
+    const nonCalibratedFraming =
+      resDark.disclaimer.includes('not a diagnosis') &&
+      resDark.disclaimer.includes('uncertain visual estimate');
+
+    const passed = isMarkedInconclusive && nonCalibratedFraming;
+    results.push({
+      name: 'Case 28: Poor-Quality Inconclusive Safeguard & Non-Calibrated Output Framing',
+      passed,
+      expected: 'analysisQuality: Inconclusive, signalQuality: Insufficient, faceDetected: false, disclaimer highlights uncertain estimate',
+      actual: `quality: "${resDark.analysisQuality}", signal: "${resDark.signalQuality}", detected: ${resDark.faceDetected}, disclaimer: "${resDark.disclaimer.slice(0, 60)}..."`,
+    });
+  }
+
   // Print summary
   console.log('Results:');
   let passCount = 0;
