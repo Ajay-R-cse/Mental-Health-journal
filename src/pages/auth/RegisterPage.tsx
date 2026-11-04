@@ -1,21 +1,34 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Brain, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Brain, User as UserIcon, Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
 
 interface RegisterPageProps {
   onSwitchToLogin: () => void;
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
-  const { register, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle, loginAsDemo } = useAuth();
 
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [demoLoading, setDemoLoading] = useState<boolean>(false);
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDemoLogin = async () => {
+    setErrorMessage(null);
+    setDemoLoading(true);
+    try {
+      await loginAsDemo();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to sign in with demo account.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const handleGoogleRegister = async () => {
     setErrorMessage(null);
@@ -83,10 +96,35 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
           </div>
 
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-950/70 border border-rose-800/50 text-rose-300 text-xs font-medium">
-              {errorMessage}
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-950/70 border border-rose-800/50 text-rose-300 text-xs font-medium space-y-2.5">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+              {errorMessage.includes('Demo Account') && (
+                <button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={demoLoading}
+                  className="w-full py-2 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{demoLoading ? 'Accessing Demo Workspace...' : 'Explore with Demo Account Instead'}</span>
+                </button>
+              )}
             </div>
           )}
+
+          {/* Quick Demo Login Banner */}
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            disabled={demoLoading || loading}
+            className="w-full mb-5 py-2.5 px-4 bg-[#1a1c36] hover:bg-[#25224d] border border-purple-800/40 text-purple-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <span>{demoLoading ? 'Accessing Demo Workspace...' : 'Explore with Demo Account (Alex Morgan)'}</span>
+          </button>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

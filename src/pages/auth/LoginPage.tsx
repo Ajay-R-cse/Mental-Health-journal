@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
-import { Brain, Mail, Lock, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Brain, Mail, Lock, Sparkles, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   onSwitchToRegister: () => void;
@@ -78,8 +78,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
           </div>
 
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-950/70 border border-rose-800/50 text-rose-300 text-xs font-medium">
-              {errorMessage}
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-950/70 border border-rose-800/50 text-rose-300 text-xs font-medium space-y-2.5">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+              {errorMessage.includes('Demo Account') && (
+                <button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={demoLoading}
+                  className="w-full py-2 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{demoLoading ? 'Accessing Demo Workspace...' : 'Sign In with Demo Account Now'}</span>
+                </button>
+              )}
             </div>
           )}
 

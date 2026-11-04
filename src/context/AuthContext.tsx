@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithCredential,
   signOut,
   onAuthStateChanged,
   updateProfile as updateFirebaseProfile,
@@ -10,11 +11,13 @@ import {
   reauthenticateWithCredential,
   reauthenticateWithPopup,
   EmailAuthProvider,
+  GoogleAuthProvider,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { User } from '../types';
 import { auth, db, googleProvider } from '../firebase';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface AuthContextType {
   user: User | null;
@@ -245,6 +248,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
+      // 1. If Google Identity Services (GIS) is loaded on the page and OAuth Client ID is configured,
+      // use the modern token client which avoids the legacy gapi iframe el.onerror issues.
+      if (
+        typeof window !== 'undefined' &&
+        (window as any).google?.accounts?.oauth2 &&
+        firebaseConfig.oAuthClientId
+      ) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+              client_id: firebaseConfig.oAuthClientId,
+              scope: 'email profile openid',
+              callback: async (tokenResponse: any) => {
+                if (tokenResponse?.error) {
+                  reject(new Error(tokenResponse.error_description || tokenResponse.error));
+                  return;
+                }
+                if (!tokenResponse?.access_token) {
+                  reject(new Error('No access token returned from Google.'));
+                  return;
+                }
+                try {
+                  const credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
+                  const result = await signInWithCredential(auth, credential);
+                  const fbUser = result.user;
+
+                  const userDocRef = doc(db, 'users', fbUser.uid);
+                  await setDoc(
+                    userDocRef,
+                    {
+                      uid: fbUser.uid,
+                      email: fbUser.email || '',
+                      displayName: fbUser.displayName || 'Mindful User',
+                      updatedAt: new Date().toISOString(),
+                    },
+                    { merge: true }
+                  );
+                  resolve();
+                } catch (credErr) {
+                  reject(credErr);
+                }
+              },
+              error_callback: (err: any) => {
+                reject(new Error(err?.message || 'Google Sign-In prompt was closed or blocked.'));
+              },
+            });
+
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
+          });
+          return;
+        } catch (gisErr: any) {
+          console.warn('Google Identity Services flow error, trying popup fallback:', gisErr);
+          if (
+            gisErr?.message?.includes('closed') ||
+            gisErr?.message?.includes('cancelled')
+          ) {
+            throw gisErr;
+          }
+        }
+      }
+
+      // 2. Fallback to Firebase signInWithPopup
       const result = await signInWithPopup(auth, googleProvider);
       const fbUser = result.user;
 
@@ -262,7 +327,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      throw new Error(err.message || 'Google Sign-In was cancelled or encountered an issue');
+      const errMsg = err?.message || String(err);
+      const errCode = err?.code || '';
+
+      if (
+        errCode === 'auth/internal-error' ||
+        errMsg.includes('auth/internal-error') ||
+        errMsg.includes('internal-error')
+      ) {
+        throw new Error(
+          'Google Sign-In is restricted in this embedded preview frame or browser environment. Please use the 1-click Demo Account or sign in with Email & Password below.'
+        );
+      } else if (errCode === 'auth/popup-blocked' || errMsg.includes('popup-blocked')) {
+        throw new Error(
+          'The Google Sign-In popup was blocked by your browser. Please allow popups or use the 1-click Demo Account below.'
+        );
+      } else if (
+        errCode === 'auth/popup-closed-by-user' ||
+        errCode === 'auth/cancelled-popup-request' ||
+        errMsg.includes('closed')
+      ) {
+        throw new Error('Google Sign-In was cancelled.');
+      } else if (errCode === 'auth/unauthorized-domain' || errMsg.includes('unauthorized-domain')) {
+        throw new Error(
+          'This domain is not in the Firebase authorized domains list. Please use the 1-click Demo Account or sign in with Email & Password.'
+        );
+      }
+      throw new Error(err.message || 'Google Sign-In encountered an issue. Please try the Demo Account or Email/Password.');
     } finally {
       setIsLoading(false);
     }

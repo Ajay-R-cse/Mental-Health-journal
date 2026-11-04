@@ -1,23 +1,9 @@
-import express from 'express';
 import path from 'path';
-import cors from 'cors';
-import apiRouter from './backend/routes/api.js';
+import express from 'express';
+import app from './backend/app.js';
 
 async function startServer() {
-  const app = express();
   const PORT = 3000;
-
-  // Middlewares
-  app.use(cors());
-  app.use(express.json());
-
-  // Health check
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
-
-  // REST API routes
-  app.use('/api', apiRouter);
 
   // Vite middleware for development vs static build in production
   // In production (dist/server.cjs or NODE_ENV=production), serve static files from dist
