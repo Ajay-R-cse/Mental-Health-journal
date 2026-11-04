@@ -27,15 +27,12 @@ export function createExpressApp() {
     res.json({ status: 'ok', service: 'mindspace-api', timestamp: new Date().toISOString() });
   });
 
-  // Mount API router at both '/api' and '/'
-  // Guarantees all routes (/api/ai/journal-insights, /api/ai/weekly-reflection, /api/nlp/analyze)
-  // match correctly regardless of Vercel rewrite behavior.
+  // Mount API router
   app.use('/api', apiRouter);
-  app.use('/', apiRouter);
 
-  // Global 404 handler for API routes
+  // 404 handler for API routes
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/ai') || req.path.startsWith('/nlp')) {
+    if (req.path.startsWith('/api')) {
       res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl || req.url}` });
       return;
     }
